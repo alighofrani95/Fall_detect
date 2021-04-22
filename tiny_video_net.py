@@ -43,7 +43,7 @@ from absl import flags
 
 import tensorflow.compat.v1 as tf
 
-from tiny_video_nets import layers
+import layers
 
 FLAGS = flags.FLAGS
 

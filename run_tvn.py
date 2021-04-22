@@ -23,10 +23,10 @@ import numpy as np
 
 import tensorflow as tf  # tf
 
-from tiny_video_nets import found_tvns
-from tiny_video_nets import tiny_video_net
+import found_tvns
+import tiny_video_net
 
-flags.DEFINE_enum('model_name', 'tvn1',
+flags.DEFINE_enum('model_name', 'tvn_mobile_1',
                   ['tvn1', 'tvn2', 'tvn3', 'tvn4',
                    'tvn_mobile_1', 'tvn_mobile_2'], 'Name of TVN to use.')
 flags.DEFINE_integer('num_classes', 157,
@@ -71,6 +71,8 @@ def main(_):
                                         dropout_keep_prob=0.5,
                                         get_representation=False,
                                         max_pool_predictions=False)
+  
+  model.summary()
   # The model function takes the inputs and is_training.
   outputs = model(vid_placeholder, False)
 

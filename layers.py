@@ -18,7 +18,7 @@ import numpy as np
 
 import tensorflow.compat.v1 as tf
 
-from tiny_video_nets import batch_norm as bn
+import batch_norm as bn
 from tensorflow.contrib import framework as contrib_framework
 from tensorflow.contrib import layers as contrib_layers
 
