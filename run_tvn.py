@@ -72,7 +72,7 @@ def main(_):
                                         get_representation=False,
                                         max_pool_predictions=False)
   
-  model.summary()
+  # model.summary()
   # The model function takes the inputs and is_training.
   outputs = model(vid_placeholder, False)
 
