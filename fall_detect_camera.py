@@ -1,11 +1,13 @@
 # fall_detect_camera.py
 import keras
+import numpy as np
 from keras.layers import *
 from keras.models import *
 from keras.losses import *
 from keras.metrics import *
 from keras.callbacks import *
 from keras.optimizers import *
+from keras.activations import *
 from keras.initializers import *
 
 
@@ -14,50 +16,68 @@ def slice(x, h1, h2, w1, w2):
     """
     return x[:, h1:h2, w1:w2, :]
 
-def block_1(inputs):
-    x = Conv2D(
-        32,
-        (3, 3),
-        strides=1,
-        padding="same",
-        kernel_initializer=VarianceScaling(
-            factor=2.0, mode="fan_in", distribution="normal"),
-        data_format="channels_last",
-    )(inputs)
 
-    x = BatchNormalization(
-        axis=-1,
-        scale=True,
-        center=True,
-        momentum="float",
-        bn_epsilon="float",
-        gamma_initializer=Zeros()
-    )(x)
-    x = ReLU()(x)
-
-    x = Conv2D(
-        32,
-        (1, 1),
-        strides=1,
-        padding="same",
-    )(x)
-    x = BatchNormalization(
-        axis=-1,
-        scale=True,
-        center=True,
-        momentum="float",
-        bn_epsilon="float",
-        gamma_initializer=Zeros()
-    )(x)
-    x = ReLU()(x)
+def relu6():
+    x = ReLU(6.)(x)
+    return x
 
 
-def block_2(inputs):
-    x = Conv2D(32, (3, 3))(inputs)
+def hard_swish(x):
+    x = x * (relu6(x + 3.) / 6.)
+    return x
 
 
-def GP_Classifier(inputs):
-    x = GlobalAvgPool2D(padding='same')(inputs)
+def Block1(inputs):
+    x = Conv2D()(inputs)
+    x = Conv1D()(x)
+
+
+def Block2(inputs):
+    x = Conv2D()(inputs)
+    x = MaxPooling1D()(x)
+
+
+def SELayer(inputs):
+    x = GlobalAveragePooling2D()(inputs)
+    x = linear()(x)
+    x = relu()(x)
+    x = linear()(x)
+    x = sigmoid()(x)
+    return x
+
+
+def SEBasicBlock(inputs):
+    x = Conv2D()(inputs)
+    x = BatchNormalization()(x)
+    x = relu()(x)
+
+    x = Conv2D()(x)
+    x = BatchNormalization()(x)
+    x = SELayer(x)
+
+    x = relu()(x)
+    return x
+
+
+def SEBottleneck(inputs):
+    x = Conv2D()(inputs)
+    x = BatchNormalization()(x)
+    x = relu()(x)
+
+    x = Conv2D()(inputs)
+    x = BatchNormalization()(x)
+    x = relu()(x)
+
+    x = Conv2D()(x)
+    x = BatchNormalization()(x)
+    x = SELayer(x)
+
+    x = relu()(x)
+    return x
+
+
+def GlobalPool(inputs):
+    x = GlobalAveragePooling2D()(inputs)
 
 
 def build_model():
