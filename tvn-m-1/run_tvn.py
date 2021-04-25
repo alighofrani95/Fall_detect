@@ -72,9 +72,9 @@ def main(_):
                                         get_representation=False,
                                         max_pool_predictions=False)
   
-  # model.summary()
   # The model function takes the inputs and is_training.
   outputs = model(vid_placeholder, False)
+  outputs.summary()
 
   with tf.Session() as sess:
     # Generate a random video to run on.
