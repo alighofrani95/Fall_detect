@@ -19,8 +19,8 @@ def slice(x, h1, h2, w1, w2):
     return x[:, h1:h2, w1:w2, :]
 
 
-def ReLU6():
-    x = ReLU(6.)(x)
+def ReLU6(inputs):
+    x = ReLU(6.)(inputs)
     return x
 
 
@@ -59,11 +59,11 @@ def Block2(inputs):
     x = BatchNormalization()(x)
     x = ReLU()(x)
 
-    x = Conv2D()(x)
+    x = Conv2D(16, 1, padding="same")(x)
     x = BatchNormalization()(x)
     x = hard_swish(x)
 
-    x = DepthwiseConv2D()(x)
+    x = DepthwiseConv2D(8, 1, padding="same")(x)
     x = BatchNormalization()(x)
     x = hard_swish(x)
 
@@ -92,11 +92,11 @@ def SE_Block(inputs, ratio=16):
 
 
 def SEBasicBlock(inputs):
-    x = Conv2D()(inputs)
+    x = Conv2D(32, 1, padding="same")(inputs)
     x = BatchNormalization()(x)
     x = ReLU()(x)
 
-    x = Conv2D()(x)
+    x = Conv2D(16, 1, padding="same")(x)
     x = BatchNormalization()(x)
     x = SE_Block(x)
 
@@ -105,15 +105,15 @@ def SEBasicBlock(inputs):
 
 
 def SEBottleneck(inputs):
-    x = Conv2D()(inputs)
+    x = Conv2D(32, 1, padding="same")(inputs)
     x = BatchNormalization()(x)
     x = ReLU()(x)
 
-    x = Conv2D()(inputs)
+    x = Conv2D(16, 1, padding="same")(inputs)
     x = BatchNormalization()(x)
     x = ReLU()(x)
 
-    x = Conv2D()(x)
+    x = Conv2D(8, 1, padding="same")(x)
     x = BatchNormalization()(x)
     x = SE_Block(x)
 
@@ -124,7 +124,7 @@ def SEBottleneck(inputs):
 def GlobalPool_Classifier(inputs, class_num):
     x = GlobalAveragePooling2D()(inputs)
     x = Dropout(0.5)(x)
-    x = Dense()(x)
+    x = Dense(32)(x)
     x = LeakyReLU()(x)
     outputs = Dense(class_num)(x)
     return outputs
@@ -134,10 +134,11 @@ def build_model():
     inputs = Input(shape=(120, 80, 1))
     t0 = slice(inputs, 0, 60, 0, 80)
     t1 = slice(inputs, 60, 120, 0, 80)
-    # t0 = Lambda(slice, arguments={'h1': 0, 'h2': 60, 'w1': 0, 'w2': 80})(inputs)
-    # t1 = Lambda(slice, arguments={'h1': 60, 'h2': 120, 'w1': 0, 'w2': 80})(inputs)
+    # # t0 = Lambda(slice, arguments={'h1': 0, 'h2': 60, 'w1': 0, 'w2': 80})(inputs)
+    # # t1 = Lambda(slice, arguments={'h1': 60, 'h2': 120, 'w1': 0, 'w2': 80})(inputs)
 
-    x = stack((t0, t1), axis=1)
+    # x = stack(, axis=1)
+    x = concatenate((t0, t1))
 
     x = Block1(x)
     x = Block1(x)
@@ -149,7 +150,7 @@ def build_model():
     x = Block2(x)
     x = Block2(x)
 
-    outputs = GlobalPool_Classifier(x)
+    outputs = GlobalPool_Classifier(x, 10)
     model = Model(inputs=inputs, outputs=outputs)
     return model
 
