@@ -108,8 +108,7 @@ def tvn(inputs, out_chanels):
 
 
 if __name__ == '__main__':
-    inputs = Input(shape=(160, 120, 3))
+    inputs = Input(shape=(320, 240, 3))
     model = tvn(inputs, 10)
     model.summary()
-    plot_model(model, to_file='tvn.png',
-               show_layer_names=True, show_shapes=True)
+    plot_model(model, to_file='tvn.png', show_layer_names=True, show_shapes=True)
