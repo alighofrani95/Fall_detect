@@ -1,6 +1,12 @@
 import cv2
 import numpy as np
 import random
+import os
+
+
+def get_basename(file_path)->str:
+    file_name = os.path.basename(file_path).split(".")[0]
+    return file_name
 
 
 def get_frame_list(num_pick, video_fps, frame_start, frame_end) -> list:
@@ -20,17 +26,25 @@ def get_frame_list(num_pick, video_fps, frame_start, frame_end) -> list:
     train_x = x_list[:split_train]
     test_x = x_list[split_train:]
 
-    print(train_x, test_x)
+    return (train_x, test_x)
 
 
-def get_frame_from_video(video_path, frame_num):
+def get_frame_from_video(video_path, frame_num)->bool:
     cap = cv2.VideoCapture(video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-    a, frame = cap.read()
-    cv2.imshow("preview", frame)
-    cv2.waitKey(0)
+    success, frame = cap.read()
+    cv2.imwrite("img_0.jpg", frame)
+    # cv2.imshow("preview", frame)
+    # cv2.waitKey(0)
+    return success
 
 
 if __name__ == '__main__':
-    get_frame_list(2, 8, 0, 20)
-    get_frame_from_video("F:/fall_detect/fall_video/video/video_006_fall_0.avi", 25)
+    train_x, test_x = get_frame_list(2, 8, 0, 20)
+
+    for x in train_x:
+        print(x[0], x[1])
+
+    x = get_basename("F:/fall_detect/fall_video/video/video_006_fall_0.avi")
+    print(x)
+    # get_frame_from_video("F:/fall_detect/fall_video/video/video_006_fall_0.avi", 25)
