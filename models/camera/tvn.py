@@ -11,13 +11,9 @@ BN_DECAY = 0.9
 BN_EPSILON = 1e-5
 
 
-def relu6(x):
-    x = ReLU(6.)(x)
-    return x
-
-
 def hard_swish(x):
-    return (x * relu6(x + 3.)) / 6.
+    x = x * tf.nn.relu6(x + 3.) * 0.16666667
+    return x
 
 
 def se_block(inputs, ratio=16):
@@ -47,27 +43,29 @@ def bn_relu(inputs, relu=True, init_zero=False):
     return x
 
 
-def block1(inputs, outputs):
-    x = Conv2D(32, kernel_size=5, strides=4, padding="same")(inputs)
+def block1(inputs):
+    x = Conv2D(32, kernel_size=3, strides=1, padding="same")(inputs)
     x = bn_relu(x, relu=True)
-    x = Conv1D(32, kernel_size=2, strides=1, padding="same")(x)
+    x = Conv1D(32, kernel_size=3, strides=1, padding="same")(x)
     x = bn_relu(x, relu=True)
-    x = se_basic_block(x, outputs)
+    x = se_basic_block(x)
     return x
 
 
-def block2(inputs, outputs):
-    x = Conv2D(128, kernel_size=5, strides=4, padding="same")(inputs)
+def block2(inputs):
+    # inv-bottle, 128x1x1
+    x = Conv2D(128, kernel_size=1, strides=1, padding="same")(inputs)
     x = bn_relu(x, relu=False)
-    x = MaxPooling2D((1,1))(x)
-    x = se_basic_block(x, outputs)
+    x = MaxPooling2D((1, 1))(x)
+    x = bn_relu(x, relu=False)
+    x = se_basic_block(x)
     return x
 
 
-def se_basic_block(inputs, outputs, stride=1):
-    x = Conv2D(outputs, (3,3), strides=stride, padding="same")(inputs)
+def se_basic_block(inputs, outputs=128, stride=1):
+    x = Conv2D(outputs, (3, 3), strides=stride, padding="same")(inputs)
     x = bn_relu(x)
-    x = Conv2D(outputs, (3,3), strides=1, padding="same")(x)
+    x = Conv2D(outputs, (3, 3), strides=1, padding="same")(x)
     x = bn_relu(x, relu=False)
     x = se_block(x)
 
@@ -76,47 +74,37 @@ def se_basic_block(inputs, outputs, stride=1):
     return x
 
 
-# def se_bottleneck(inputs, outputs, stride=1):
-#     expand = 4
-#     x = Conv2D(outputs, (1,1), strides=stride)(inputs)
-#     x = bn_relu(x)
-#     x = Conv2D(outputs, (3,3), strides=stride)(x)
-#     x = bn_relu(x)
-#     x = Conv2D(outputs, (1,1), strides=stride)(x * expand)
-#     x = bn_relu(x * expand, relu=False)
-#     x = se_block(x * expand)
-
-#     x = Concatenate(axis=-1)([x, inputs])
-#     x = ReLU()(x)
-#     return x
-
-
 def GP_class(inputs, classes=100):
     x = GlobalAvgPool2D()(inputs)
-    # x = Dropout(0.5)(x)
-    x = Dense(classes, activation="softmax")(x)
+    x = Dropout(0.5)(x)
+    x = Dense(128)(x)
+    x = LeakyReLU(0.2)(x)
+    x = Dense(classes)(x)
+    x = Softmax()(x)
     return x
 
 
-def tvn(inputs, out_chanels):
+def TVN(inputs, out_chanels):
     repeat = 2
     block1_repeat = repeat
     block2_repeat = repeat
-    # inputs = Input(shape=(2, 160, 120, 3))
-    x = inputs
-    for i in range(block1_repeat):
-        x = block1(x, out_chanels)
-    for j in range(block2_repeat):
-        x = block2(x, out_chanels)
 
-    x = GP_class(x)
+    x = inputs
+
+    for i in range(block1_repeat):
+        x = block1(x)
+    for j in range(block2_repeat):
+        x = block2(x)
+
+    x = GP_class(x, out_chanels)
 
     model = Model(inputs=inputs, outputs=x)
     return model
 
 
 if __name__ == '__main__':
-    inputs = Input(shape=(160, 120, 3))
-    model = tvn(inputs, 10)
+    inputs = Input(shape=(320, 240, 3))
+    model = TVN(inputs, 100)
     model.summary()
-    plot_model(model, to_file='tvn.png', show_layer_names=True, show_shapes=True)
+    plot_model(model, to_file='TVN.png',
+               show_layer_names=True, show_shapes=True)
