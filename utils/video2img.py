@@ -30,7 +30,7 @@ def get_frame_list(num_pick, video_fps, frame_start, frame_end) -> list:
     per_frame_skip_frame = round(float(video_fps)/float(num_pick))
 
     if per_frame_skip_frame > (frame_end - frame_start):
-        raise "frames are not enough"
+        raise print("frames are not enough")
 
     scope_end = frame_end - per_frame_skip_frame
 
@@ -64,12 +64,13 @@ def merge_imgs(img_list: list):
     return img
 
 
-def save_imgs(save_root:str, action:str, imgs):
+def save_imgs(save_root:str, action:str, imgs) -> int:
     global img_file_count
     Path(os.path.join(save_root, action)).mkdir(parents=True, exist_ok=True)
     img_file_count += 1
-    img_path = os.path.join("{}/{}_{}.jpg".format(save_root, action, img_file_count))
+    img_path = os.path.join("{}/{}/img_{}.jpg".format(save_root, action, img_file_count))
     cv2.imwrite(img_path, imgs)
+    return img_file_count
 
 
 def gen_img_by_frame_num_list(video_path:str, frame_list:list):
@@ -85,10 +86,6 @@ def gen_img_by_frame_num_list(video_path:str, frame_list:list):
 
 
 if __name__ == '__main__':
-    # file_name = get_basename("F:/fall_detect/fall_video/video/video_006_fall_0.avi")
-    # action_name = file_name.split('_')[2]
-    # print(action_name)
-
     video_path = "F:/fall_detect/fall_video/video/video_006_fall_0.avi"
     total_frame_num = get_total_frames_num(video_path)
     fps = get_video_fps(video_path)

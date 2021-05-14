@@ -84,12 +84,17 @@ def GP_class(inputs, classes=100):
     return x
 
 
-def TVN(inputs, out_chanels):
+def TVN(inputs, out_chanels, vstack=True):
     repeat = 2
     block1_repeat = repeat
     block2_repeat = repeat
 
     x = inputs
+
+    if vstack:
+        _, h, w, c = inputs.shape.as_list()
+        print("[INPUTS] shape: {}".format(_, h, w, c))
+        x = tf.reshape(inputs, [2, h//2, w, c])
 
     for i in range(block1_repeat):
         x = block1(x)
@@ -103,7 +108,7 @@ def TVN(inputs, out_chanels):
 
 
 if __name__ == '__main__':
-    inputs = Input(shape=(320, 240, 3))
+    inputs = Input(shape=(480, 320, 3))
     model = TVN(inputs, 10)
     model.summary()
     plot_model(model, to_file='TVN.png',
