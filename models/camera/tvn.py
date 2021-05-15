@@ -5,18 +5,30 @@ from keras.models import *
 from keras import backend as K
 from keras.activations import *
 from keras.utils import plot_model
+from keras.engine.topology import Layer
 
 
 BN_DECAY = 0.9
 BN_EPSILON = 1e-5
 
 
-def hard_swish(x):
-    x = x * tf.nn.relu6(x + 3.) * 0.16666667
-    return x
+# def hard_swish(x):
+#     x = x * tf.nn.relu6(x + 3.) * 0.16666667
+#     return x
 
 
-def se_block(inputs, ratio=16):
+class HardSwish(Layer):
+    def __init__(self):
+        super(HardSwish, self).__init__()
+
+    def call(self, inputs):
+        return inputs * tf.nn.relu6(inputs + 3.) * 0.16666667
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
+def se_block(inputs, ratio=2):
     channels = K.int_shape(inputs)[-1]
     x = GlobalAveragePooling2D()(inputs)
     x = Dense(channels // ratio, activation='relu')(x)
@@ -25,7 +37,7 @@ def se_block(inputs, ratio=16):
     return x
 
 
-def bn_relu(inputs, relu=True, init_zero=False):
+def bn_relu(inputs, relu="relu", init_zero=False):
     initializer = tf.zeros_initializer() if init_zero else tf.ones_initializer()
     x = BatchNormalization(
         axis=-1,
@@ -36,37 +48,39 @@ def bn_relu(inputs, relu=True, init_zero=False):
         fused=True,
         gamma_initializer=initializer,
     )(inputs)
-    if relu:
+    if relu == "relu":
         x = ReLU()(x)
+    elif relu == "h-swish":
+        x = HardSwish()(x)
     else:
-        x = hard_swish(x)
+        pass
     return x
 
 
 def block1(inputs):
-    x = Conv2D(32, kernel_size=3, strides=1, padding="same")(inputs)
-    x = bn_relu(x, relu=True)
+    x = Conv2D(32, kernel_size=3, strides=2, padding="same")(inputs)
+    x = bn_relu(x, relu="relu")
     x = Conv1D(32, kernel_size=3, strides=1, padding="same")(x)
-    x = bn_relu(x, relu=True)
-    x = se_basic_block(x)
+    x = bn_relu(x, relu="relu")
+    x = se_basic_block(x, 32)
     return x
 
 
 def block2(inputs):
     # inv-bottle, 128x1x1
     x = Conv2D(128, kernel_size=1, strides=1, padding="same")(inputs)
-    x = bn_relu(x, relu=False)
+    x = bn_relu(x, relu="h-swish")
     x = MaxPooling2D((1, 1))(x)
-    x = bn_relu(x, relu=False)
-    x = se_basic_block(x)
+    x = bn_relu(x, relu="h-swish")
+    x = se_basic_block(x, 128)
     return x
 
 
-def se_basic_block(inputs, outputs=128, stride=1):
-    x = Conv2D(outputs, (3, 3), strides=stride, padding="same")(inputs)
+def se_basic_block(inputs, outputs=128):
+    x = Conv2D(outputs, (3, 3), strides=1, padding="same")(inputs)
     x = bn_relu(x)
     x = Conv2D(outputs, (3, 3), strides=1, padding="same")(x)
-    x = bn_relu(x, relu=False)
+    x = bn_relu(x, relu=None)
     x = se_block(x)
 
     x = Concatenate(axis=-1)([x, inputs])
@@ -77,10 +91,8 @@ def se_basic_block(inputs, outputs=128, stride=1):
 def GP_class(inputs, classes=100):
     x = GlobalAvgPool2D()(inputs)
     x = Dropout(0.5)(x)
-    x = Dense(128)(x)
-    x = LeakyReLU(0.2)(x)
-    x = Dense(classes)(x)
-    x = Softmax()(x)
+    x = Dense(128, activation="relu")(x)
+    x = Dense(classes, activation="softmax")(x)
     return x
 
 
