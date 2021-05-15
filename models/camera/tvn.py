@@ -8,8 +8,8 @@ from keras.utils import plot_model
 from keras.engine.topology import Layer
 
 
-num_frames = 2
 batch_size = 128
+num_frames = 2
 
 SE_RATIO = 2
 BN_DECAY = 0.9
@@ -106,11 +106,13 @@ def TVN(inputs, out_chanels, vstack=True):
     block1_repeat = repeat
     block2_repeat = repeat
 
+    bs, h, w, c = inputs.shape.as_list()
+    batch_size = bs
+    num_frames = h//240
+
     x = inputs
 
     if vstack:
-        bs, h, w, c = x.shape.as_list()
-        print("[INPUTS] shape: ", bs, h, w, c)
         x = tf.reshape(x, [bs*num_frames, h//num_frames, w, c])
 
     for i in range(block1_repeat):
@@ -125,8 +127,9 @@ def TVN(inputs, out_chanels, vstack=True):
 
 
 if __name__ == '__main__':
+    # for testing
     inputs = Input(shape=(num_frames*240, 320, 3), batch_size=batch_size)
-    model = TVN(inputs, 3)
+    model = TVN(inputs, 100)
     model.summary()
     plot_model(model, to_file='TVN.png',
                show_layer_names=True, show_shapes=True)
