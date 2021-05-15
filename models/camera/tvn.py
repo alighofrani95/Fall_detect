@@ -8,13 +8,12 @@ from keras.utils import plot_model
 from keras.engine.topology import Layer
 
 
+num_frames = 2
+batch_size = 128
+
+SE_RATIO = 2
 BN_DECAY = 0.9
 BN_EPSILON = 1e-5
-
-
-# def hard_swish(x):
-#     x = x * tf.nn.relu6(x + 3.) * 0.16666667
-#     return x
 
 
 class HardSwish(Layer):
@@ -28,7 +27,7 @@ class HardSwish(Layer):
         return input_shape
 
 
-def se_block(inputs, ratio=2):
+def se_block(inputs, ratio=SE_RATIO):
     channels = K.int_shape(inputs)[-1]
     x = GlobalAveragePooling2D()(inputs)
     x = Dense(channels // ratio, activation='relu')(x)
@@ -88,11 +87,17 @@ def se_basic_block(inputs, outputs=128):
     return x
 
 
-def GP_class(inputs, classes=100):
-    x = GlobalAvgPool2D()(inputs)
+def GAP_classification(inputs, classes=100):
+    feature_shape = inputs.shape.as_list()
+    num_frames = feature_shape[0] // batch_size
+    inputs = tf.reshape(inputs, [
+        int(feature_shape[0] // num_frames),
+        num_frames * feature_shape[1], feature_shape[2], -1
+    ])
+    x = tf.reduce_mean(inputs, axis=[1, 2])
     x = Dropout(0.5)(x)
-    x = Dense(128, activation="relu")(x)
     x = Dense(classes, activation="softmax")(x)
+    print("[OUTPUT] shape:", x.shape.as_list())
     return x
 
 
@@ -104,24 +109,24 @@ def TVN(inputs, out_chanels, vstack=True):
     x = inputs
 
     if vstack:
-        _, h, w, c = inputs.shape.as_list()
-        print("[INPUTS] shape: {}".format(_, h, w, c))
-        x = tf.reshape(inputs, [2, h//2, w, c])
+        bs, h, w, c = x.shape.as_list()
+        print("[INPUTS] shape: ", bs, h, w, c)
+        x = tf.reshape(x, [bs*num_frames, h//num_frames, w, c])
 
     for i in range(block1_repeat):
         x = block1(x)
     for j in range(block2_repeat):
         x = block2(x)
 
-    x = GP_class(x, out_chanels)
+    x = GAP_classification(x, out_chanels)
 
     model = Model(inputs=inputs, outputs=x)
     return model
 
 
 if __name__ == '__main__':
-    inputs = Input(shape=(480, 320, 3))
-    model = TVN(inputs, 10)
+    inputs = Input(shape=(num_frames*240, 320, 3), batch_size=batch_size)
+    model = TVN(inputs, 3)
     model.summary()
     plot_model(model, to_file='TVN.png',
                show_layer_names=True, show_shapes=True)
