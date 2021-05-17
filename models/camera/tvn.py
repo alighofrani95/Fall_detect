@@ -4,16 +4,22 @@ from keras.layers import *
 from keras.models import *
 from keras import backend as K
 from keras.activations import *
-from keras.utils import plot_model
+from keras.utils.vis_utils import plot_model
 from keras.engine.topology import Layer
 
 
-batch_size = 128
+batch_size = 32
 num_frames = 2
 
 SE_RATIO = 2
 BN_DECAY = 0.9
 BN_EPSILON = 1e-5
+
+
+def slice(x, h1, h2, w1, w2):
+    """ Define a tensor slice function
+    """
+    return x[:, h1:h2, w1:w2, :]
 
 
 class HardSwish(Layer):
@@ -96,12 +102,14 @@ def GAP_classification(inputs, classes=100):
     ])
     x = tf.reduce_mean(inputs, axis=[1, 2])
     x = Dropout(0.5)(x)
-    x = Dense(classes, activation="softmax")(x)
+    x = Dense(classes, activation="softmax", name='out')(x)
     print("[OUTPUT] shape:", x.shape.as_list())
     return x
 
 
 def TVN(inputs, out_chanels, vstack=True):
+    global batch_size
+
     repeat = 2
     block1_repeat = repeat
     block2_repeat = repeat
@@ -110,25 +118,33 @@ def TVN(inputs, out_chanels, vstack=True):
     batch_size = bs
     num_frames = h//240
 
+    print(inputs.shape.as_list())
+    print("batch_size", batch_size)
+
     x = inputs
 
     if vstack:
         x = tf.reshape(x, [bs*num_frames, h//num_frames, w, c])
+        # f1 = Lambda(slice, arguments={
+        #     'h1': 0, 'h2': 240, 'w1': 0, 'w2': 320})(x)
+        # f2 = Lambda(slice, arguments={
+        #     'h1': 240, 'h2': 480, 'w1': 0, 'w2': 320})(x)
+        # x = Add()([f1, f2])
 
     for i in range(block1_repeat):
         x = block1(x)
     for j in range(block2_repeat):
         x = block2(x)
 
-    x = GAP_classification(x, out_chanels)
+    out = GAP_classification(x, out_chanels)
 
-    model = Model(inputs=inputs, outputs=x)
+    model = Model(inputs=inputs, outputs=out)
     return model
 
 
 if __name__ == '__main__':
     # for testing
-    inputs = Input(shape=(num_frames*240, 320, 3), batch_size=batch_size)
+    inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
     model = TVN(inputs, 100)
     model.summary()
     plot_model(model, to_file='TVN.png',
