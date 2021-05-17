@@ -78,7 +78,7 @@ def train(bs=64):
         epochs=epochs,
         validation_data=test_data,
         validation_steps=testset_size//batch_size,
-        shuffle=True,
+        shuffle=False,
         callbacks=callbacks,
     )
     return history

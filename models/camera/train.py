@@ -13,7 +13,7 @@ from tvn import TVN
 
 
 seed_n = 7
-batch_size = 32
+batch_size = 64
 epochs = 50
 train_path = "data/train"
 test_path = "data/test"
@@ -28,8 +28,8 @@ print(trainset_size, testset_size, trainset_size//batch_size, testset_size//batc
 
 trainDataGen = ImageDataGenerator(
     rescale=1./255,
-    featurewise_center=True,
-    featurewise_std_normalization=True,
+    # featurewise_center=True,
+    # featurewise_std_normalization=True,
     horizontal_flip=True,
     brightness_range=[0.2,1.0],
 )
@@ -78,7 +78,7 @@ def train(bs=64):
         epochs=epochs,
         validation_data=test_data,
         validation_steps=testset_size//batch_size,
-        shuffle=True,
+        shuffle=False,
         callbacks=callbacks,
     )
     return history
