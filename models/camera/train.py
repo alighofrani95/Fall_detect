@@ -39,7 +39,7 @@ testDataGen = ImageDataGenerator(rescale=1./255)
 train_data = trainDataGen.flow_from_directory(
     train_path,
     target_size=(480, 320),
-    class_mode='categorical',
+    class_mode='binary',
     batch_size=batch_size,
     color_mode='grayscale',
     shuffle=True,
@@ -49,7 +49,7 @@ train_data = trainDataGen.flow_from_directory(
 test_data = testDataGen.flow_from_directory(
     test_path,
     target_size=(480, 320),
-    class_mode='categorical',
+    class_mode='binary',
     batch_size=batch_size,
     color_mode='grayscale',
     shuffle=True,
@@ -60,12 +60,12 @@ test_data = testDataGen.flow_from_directory(
 def build_model(num_frames=2, batch_size=64, outputs=10):
     inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
     model = TVN(inputs, outputs)
-    model.compile(optimizer=Adam(), loss="categorical_crossentropy", metrics=['acc'])
+    model.compile(optimizer=Adam(), loss="binary_crossentropy", metrics=['acc'])
     return model
 
 
 def train(bs=64):
-    model = build_model(num_frames=2, batch_size=bs, outputs=4)
+    model = build_model(num_frames=2, batch_size=bs, outputs=1)
     # model.summary()
     # plot_model(
     #     model, to_file='TVN_nf2_bs{}.png'.format(bs),

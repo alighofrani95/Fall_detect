@@ -102,7 +102,7 @@ def GAP_classification(inputs, classes=100):
     ])
     x = tf.reduce_mean(inputs, axis=[1, 2])
     x = Dropout(0.5)(x)
-    x = Dense(classes, activation="softmax", name='out')(x)
+    x = Dense(classes, activation="sigmoid", name='out')(x)
     print("[OUTPUT] shape:", x.shape.as_list())
     return x
 
