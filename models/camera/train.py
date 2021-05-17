@@ -6,7 +6,7 @@ from keras import backend as K
 from keras.callbacks import *
 from matplotlib import pyplot
 from keras.layers import Input
-from keras.utils.vis_utils import plot_model
+# from keras.utils.vis_utils import plot_model
 from glob import glob
 
 from tvn import TVN
@@ -17,8 +17,11 @@ batch_size = 32
 epochs = 50
 train_path = "data/train"
 test_path = "data/test"
-trainset_size = len(glob("{}/*/*".format(train_path)))
-testset_size = len(glob("{}/*/*".format(test_path)))
+# trainset_size = len(glob("{}/*/*".format(train_path)))
+# testset_size = len(glob("{}/*/*".format(test_path)))
+
+trainset_size = 3600
+testset_size = 900
 
 print(trainset_size, testset_size, trainset_size//batch_size, testset_size//batch_size)
 
@@ -64,10 +67,10 @@ def build_model(num_frames=2, batch_size=64, outputs=10):
 def train(bs=64):
     model = build_model(num_frames=2, batch_size=bs, outputs=4)
     # model.summary()
-    plot_model(
-        model, to_file='TVN_nf2_bs{}.png'.format(bs),
-        show_layer_names=True, show_shapes=True
-    )
+    # plot_model(
+    #     model, to_file='TVN_nf2_bs{}.png'.format(bs),
+    #     show_layer_names=True, show_shapes=True
+    # )
     callbacks = [ModelCheckpoint("fd_cam.h5", monitor='val_loss', mode='min', save_best_only=True)]
     history = model.fit(
         train_data,

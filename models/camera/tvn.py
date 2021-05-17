@@ -4,7 +4,7 @@ from keras.layers import *
 from keras.models import *
 from keras import backend as K
 from keras.activations import *
-from keras.utils.vis_utils import plot_model
+# from keras.utils.vis_utils import plot_model
 from keras.engine.topology import Layer
 
 
@@ -147,5 +147,5 @@ if __name__ == '__main__':
     inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
     model = TVN(inputs, 100)
     model.summary()
-    plot_model(model, to_file='TVN.png',
-               show_layer_names=True, show_shapes=True)
+    # plot_model(model, to_file='TVN.png',
+    #            show_layer_names=True, show_shapes=True)
