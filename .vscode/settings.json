@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.c": "c",
+        "*.spec": "python",
+        "go_i2c.h": "c"
+    }
+}
