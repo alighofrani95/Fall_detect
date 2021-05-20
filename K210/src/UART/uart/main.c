@@ -13,42 +13,39 @@
  * limitations under the License.
  */
 #include <stdio.h>
-#include "fpioa.h"
 #include <string.h>
-#include "uart.h"
+
+#include "fpioa.h"
 #include "gpiohs.h"
 #include "sysctl.h"
+#include "uart.h"
 
-#define RECV_LENTH  4
+#define RECV_LENTH 4
 
-#define CLOSLIGHT   0x55555555
-#define OPENLIGHT   0xAAAAAAAA
+#define CLOSLIGHT 0x55555555
+#define OPENLIGHT 0xAAAAAAAA
 
-#define UART_NUM    UART_DEVICE_3
+#define UART_NUM UART_DEVICE_3
 
-int release_cmd(char *cmd)
-{
-    switch(*((int *)cmd)){
+int release_cmd(char *cmd) {
+    switch (*((int *)cmd)) {
         case CLOSLIGHT:
-        gpiohs_set_pin(3, GPIO_PV_LOW);
-        break;
+            gpiohs_set_pin(3, GPIO_PV_LOW);
+            break;
         case OPENLIGHT:
-        gpiohs_set_pin(3, GPIO_PV_HIGH);
-        break;
+            gpiohs_set_pin(3, GPIO_PV_HIGH);
+            break;
     }
     return 0;
 }
 
-void io_mux_init(void)
-{
-
+void io_mux_init(void) {
     fpioa_set_function(4, FUNC_UART1_RX + UART_NUM * 2);
     fpioa_set_function(5, FUNC_UART1_TX + UART_NUM * 2);
     fpioa_set_function(24, FUNC_GPIOHS3);
 }
 
-int main()
-{
+int main() {
     io_mux_init();
     plic_init();
     sysctl_enable_irq();
@@ -67,31 +64,27 @@ int main()
     int rec_flag = 0;
     char cmd[8];
     int i = 0;
-    while (1)
-    {
-        while(uart_receive_data(UART_NUM, &recv, 1))
-        {
+    while (1) {
+        while (uart_receive_data(UART_NUM, &recv, 1)) {
             uart_send_data(UART_NUM, &recv, 1);
-            switch(rec_flag)
-            {
+            switch (rec_flag) {
                 case 0:
-                recv == 0x55 ? (rec_flag = 1) : rec_flag;
-                break;
+                    recv == 0x55 ? (rec_flag = 1) : rec_flag;
+                    break;
                 case 1:
-                recv == 0xAA ? (rec_flag = 2) : (rec_flag = 0);
-                break;
+                    recv == 0xAA ? (rec_flag = 2) : (rec_flag = 0);
+                    break;
                 case 2:
-                cmd[i++] = recv;
-                if(i >= RECV_LENTH)
-                {
-                    i = 0;
-                    release_cmd(cmd);
-                    rec_flag = 0;
-                }
-                break;
+                    cmd[i++] = recv;
+                    if (i >= RECV_LENTH) {
+                        i = 0;
+                        release_cmd(cmd);
+                        rec_flag = 0;
+                    }
+                    break;
             }
         }
     }
-    while(1);
+    while (1)
+        ;
 }
-

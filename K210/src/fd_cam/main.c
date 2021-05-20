@@ -1,14 +1,17 @@
 #include <dvp.h>
+#include <uart.h>
 #include <fpioa.h>
+#include <gpiohs.h>
 #include <sysctl.h>
 #include <syslog.h>
 
+#include "wifi.h"
 #include "cambus.h"
 #include "gc0328.h"
-static const char *TAG = "camera_init";
 
+#define UART_NUM UART_DEVICE_3
 
-static void io_mux_init(void) {
+static void io_init(void) {
     /* Init DVP IO map and function settings */
     fpioa_set_function(40, FUNC_SCCB_SDA);
     fpioa_set_function(41, FUNC_SCCB_SCLK);
@@ -22,16 +25,13 @@ static void io_mux_init(void) {
     sysctl_set_spi0_dvp_data(1);
 }
 
-static void io_set_power(void) {
+static void io_power(void) {
     /* Set dvp and spi pin to 1.8V */
     sysctl_set_power_mode(SYSCTL_POWER_BANK6, SYSCTL_POWER_V18);
     sysctl_set_power_mode(SYSCTL_POWER_BANK7, SYSCTL_POWER_V18);
 }
 
 void camera_init() {
-    io_mux_init();
-    io_set_power();
-
     dvp_init(8);
     dvp_set_xclk_rate(24000000);
     dvp_enable_burst();
@@ -47,17 +47,22 @@ void camera_init() {
     gc0328_init();
 }
 
-void init_sensors() {
+void sensors_init() {
+    // DVP IO map
+    io_init();
+    // set io power
+    io_power();
+    plic_init();
+    sysctl_enable_irq();
+
     // camera init
     camera_init();
-    // uart init
     // wifi init
-
-
+    wifi_init();
 }
 
 int main(void) {
-    init_sensors();
-    
+    sensors_init();
+
     return 0;
 }

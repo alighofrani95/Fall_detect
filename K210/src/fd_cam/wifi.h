@@ -20,6 +20,8 @@ typedef enum {
 
 static int wifi_send(char* command);
 
+// just like uart init
+void wifi_init();
 void wifi_mode(at_mode mode);
 void wifi_auto_connect(int enable);
 

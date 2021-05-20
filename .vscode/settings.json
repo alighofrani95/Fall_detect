@@ -3,6 +3,7 @@
         "*.c": "c",
         "*.spec": "python",
         "go_i2c.h": "c",
-        "dvp.h": "c"
+        "dvp.h": "c",
+        "uart.h": "c"
     }
 }
