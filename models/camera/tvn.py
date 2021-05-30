@@ -16,10 +16,10 @@ BN_DECAY = 0.9
 BN_EPSILON = 1e-5
 
 
-def slice(x, h1, h2, w1, w2):
-    """ Define a tensor slice function
-    """
-    return x[:, h1:h2, w1:w2, :]
+# def slice(x, h1, h2, w1, w2):
+#     """ Define a tensor slice function
+#     """
+#     return x[:, h1:h2, w1:w2, :]
 
 
 class HardSwish(Layer):
@@ -82,9 +82,9 @@ def block2(inputs):
 
 
 def se_basic_block(inputs, outputs=128):
-    x = Conv2D(outputs, (3, 3), strides=1, padding="same")(inputs)
+    x = Conv2D(outputs, kernel_size=3, strides=1, padding="same")(inputs)
     x = bn_relu(x)
-    x = Conv2D(outputs, (3, 3), strides=1, padding="same")(x)
+    x = Conv2D(outputs, kernel_size=3, strides=1, padding="same")(x)
     x = bn_relu(x, relu=None)
     x = se_block(x)
 
@@ -116,7 +116,7 @@ def TVN(inputs, out_chanels, vstack=True):
 
     bs, h, w, c = inputs.shape.as_list()
     batch_size = bs
-    num_frames = h//240
+    # num_frames = h//240
 
     print(inputs.shape.as_list())
     print("batch_size", batch_size)
@@ -144,6 +144,7 @@ def TVN(inputs, out_chanels, vstack=True):
 
 if __name__ == '__main__':
     # for testing
+    num_frames = 2
     inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
     model = TVN(inputs, 100)
     model.summary()
