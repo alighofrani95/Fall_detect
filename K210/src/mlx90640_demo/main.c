@@ -41,8 +41,11 @@ int main()
         if(status != 0) {
             continue;
         }
-        for(int i = 0; i < 834; i++) {
-            printf("%d\n", mlx90640Frame[i]);
+        MLX90640_CalculateTo(mlx90640Frame, &mlx90640, emissivity, tr, mlx90640To);
+        MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, mlx90640To, mode, &mlx90640);
+        MLX90640_BadPixelsCorrection((&mlx90640)->outlierPixels, mlx90640To, mode, &mlx90640);
+        for(int i = 0; i < 768; i++) {
+            printf("%f\n", mlx90640To[i]);
         }
     }
 }
