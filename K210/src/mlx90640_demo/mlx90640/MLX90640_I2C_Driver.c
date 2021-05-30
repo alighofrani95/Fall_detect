@@ -15,22 +15,42 @@
  *
  */
 #include "i2c_software.h"
+#include "i2c.h"
+#include "fpioa.h"
 #include "MLX90640_I2C_Driver.h"
 #include "sleep.h"
+
+#define I2C_SOFTWARE    0
+#define I2C_HARDWARE    1
+#define I2C_MODE        I2C_HARDWARE
+
+#if I2C_MODE == I2C_HARDWARE
+    #define SCL_PIN             30
+    #define SDA_PIN             31
+    #define MLX90640_I2C_DEVICE I2C_DEVICE_0
+#endif
 
 software_i2c_haldler_t mlx90640_i2c_handler;
 
 void MLX90640_I2CInit()
 {   
     //init i2c
-    mlx90640_i2c_handler.scl_pin_num = 30;
-    mlx90640_i2c_handler.sda_pin_num = 31;
-    mlx90640_i2c_handler.scl_hspin_num = 3;
-    mlx90640_i2c_handler.sda_hspin_num = 4;
-    i2c_master_init(&mlx90640_i2c_handler);
-    i2c_stop(&mlx90640_i2c_handler);
+    #if I2C_MODE == I2C_SOFTWARE
+        mlx90640_i2c_handler.scl_pin_num = 30;
+        mlx90640_i2c_handler.sda_pin_num = 31;
+        mlx90640_i2c_handler.scl_hspin_num = 3;
+        mlx90640_i2c_handler.sda_hspin_num = 4;
+        i2c_master_init(&mlx90640_i2c_handler);
+        i2c_stop(&mlx90640_i2c_handler);
+    #elif I2C_MODE == I2C_HARDWARE
+        fpioa_set_function(SCL_PIN, FUNC_I2C0_SCLK);
+        fpioa_set_function(SDA_PIN, FUNC_I2C0_SDA);
+        i2c_init(MLX90640_I2C_DEVICE, 0x33, 7, 5000);
+    #endif
 }
-
+#if I2C_MODE == I2C_SOFTWARE
+#elif I2C_MODE == I2C_HARDWARE
+#endif
 int MLX90640_I2CGeneralReset(void)
 {    
     int ack;
@@ -68,15 +88,19 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
     sa = (slaveAddr << 1);
     cmd[0] = startAddress >> 8;
     cmd[1] = startAddress & 0x00FF;
-     
-    i2c_stop(&mlx90640_i2c_handler);
-    usleep(5);
-    ack = i2c_read_reg(&mlx90640_i2c_handler, slaveAddr, startAddress, i2cData, 2*nMemAddressRead);
-    if (ack != 0x00)
-    {
-        return -1; 
-    }  
-    i2c_stop(&mlx90640_i2c_handler); 
+    
+    #if I2C_MODE == I2C_SOFTWARE
+        i2c_stop(&mlx90640_i2c_handler);
+        usleep(5);
+        ack = i2c_read_reg(&mlx90640_i2c_handler, slaveAddr, startAddress, i2cData, 2*nMemAddressRead);
+        if (ack != 0x00)
+        {
+            return -1; 
+        }  
+        i2c_stop(&mlx90640_i2c_handler); 
+    #elif I2C_MODE == I2C_HARDWARE
+        i2c_recv_data(MLX90640_I2C_DEVICE, cmd, 2, i2cData, 2*nMemAddressRead);
+    #endif
     
     for(cnt=0; cnt < nMemAddressRead; cnt++)
     {
@@ -89,7 +113,12 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
 
 void MLX90640_I2CFreqSet(int freq)
 {
-    
+    #if I2C_MODE == I2C_SOFTWARE
+    #elif I2C_MODE == I2C_HARDWARE
+        fpioa_set_function(SCL_PIN, FUNC_I2C0_SCLK);
+        fpioa_set_function(SDA_PIN, FUNC_I2C0_SDA);
+        i2c_init(MLX90640_I2C_DEVICE, 0x33, 7, freq);
+    #endif
 }
 
 int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
@@ -106,20 +135,22 @@ int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
     cmd[2] = data >> 8;
     cmd[3] = data & 0x00FF;
 
-    i2c_stop(&mlx90640_i2c_handler); 
-    usleep(5);
-    ack = i2c_write_reg(&mlx90640_i2c_handler, slaveAddr, writeAddress, &cmd[2], 2);
-    if (ack != 0x00)
-    {
-        return -1;
-    }         
-    i2c_stop(&mlx90640_i2c_handler);  
-    
+    #if I2C_MODE == I2C_SOFTWARE
+        i2c_stop(&mlx90640_i2c_handler); 
+        usleep(5);
+        ack = i2c_write_reg(&mlx90640_i2c_handler, slaveAddr, writeAddress, &cmd[2], 2);
+        if (ack != 0x00)
+        {
+            return -1;
+        }         
+        i2c_stop(&mlx90640_i2c_handler);
+    #elif I2C_MODE == I2C_HARDWARE
+        i2c_send_data(MLX90640_I2C_DEVICE, cmd, 4);
+    #endif
+
     MLX90640_I2CRead(slaveAddr,writeAddress, 1, &dataCheck);
-    
     if ( dataCheck != data)
     {
-        printf("%d:%d\n", data, dataCheck);
         return -2;
     }    
     

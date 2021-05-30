@@ -17,7 +17,6 @@
 #include <MLX90640_I2C_Driver.h>
 #include <MLX90640_API.h>
 #include <math.h>
-#include <stdio.h>
 
 void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractPTATParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
@@ -125,7 +124,7 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
         error = MLX90640_I2CRead(slaveAddr, 0x8000, 1, &statusRegister);
         if(error != 0)
         {
-            return 0;
+            return error;
         }    
         dataReady = statusRegister & 0x0008;
     }      
@@ -133,19 +132,19 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
     error = MLX90640_I2CWrite(slaveAddr, 0x8000, 0x0030);
     if(error == -1)
     {
-        return 1;
+        return error;
     }
                      
     error = MLX90640_I2CRead(slaveAddr, 0x0400, 768, frameData); 
     if(error != 0)
     {
-        return 2;
+        return error;
     }                       
     
     error = MLX90640_I2CRead(slaveAddr, 0x0700, 64, data); 
     if(error != 0)
     {
-        return 3;
+        return error;
     }     
         
     error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
@@ -154,7 +153,7 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
     
     if(error != 0)
     {
-        return 4;
+        return error;
     }
     
     error = ValidateAuxData(data);
@@ -169,7 +168,7 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
     error = ValidateFrameData(frameData);
     if (error != 0)
     {
-        return 5;
+        return error;
     }
     
     return frameData[833];    
