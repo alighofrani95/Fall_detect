@@ -60,9 +60,11 @@ void i2c_slave_init(void)
 
 void i2c_master_init(software_i2c_haldler_t *handler)
 {
+    printf("scl pin:%d\nsda pin:%d\nscl hspin:%d\nsda hspin:%d\n", 
+        handler->scl_pin_num, handler->sda_pin_num, handler->scl_hspin_num, handler->sda_hspin_num);
     //init io
-    fpioa_set_function(handler->scl_pin_num, handler->scl_hspin_num);
-    fpioa_set_function(handler->sda_pin_num, handler->sda_hspin_num);
+    fpioa_set_function(handler->scl_pin_num, FUNC_GPIOHS0 + handler->scl_hspin_num);
+    fpioa_set_function(handler->sda_pin_num, FUNC_GPIOHS0 + handler->sda_hspin_num);
     gpiohs_set_drive_mode(handler->scl_hspin_num, GPIO_DM_OUTPUT);
     gpiohs_set_drive_mode(handler->sda_hspin_num, GPIO_DM_OUTPUT);
     gpiohs_set_pin(handler->scl_hspin_num, GPIO_PV_HIGH);
@@ -74,8 +76,8 @@ void i2c_master_init(software_i2c_haldler_t *handler)
  */
 void i2c_start(software_i2c_haldler_t *handler)
 {
-    fpioa_set_function(handler->scl_pin_num, handler->scl_hspin_num);
-    fpioa_set_function(handler->sda_pin_num, handler->sda_hspin_num);
+    fpioa_set_function(handler->scl_pin_num, FUNC_GPIOHS0 + handler->scl_hspin_num);
+    fpioa_set_function(handler->sda_pin_num, FUNC_GPIOHS0 + handler->sda_hspin_num);
     gpiohs_set_drive_mode(handler->sda_hspin_num, GPIO_DM_OUTPUT);
     gpiohs_set_pin(handler->sda_hspin_num, GPIO_PV_HIGH);
     gpiohs_set_pin(handler->scl_hspin_num, GPIO_PV_HIGH);
@@ -149,11 +151,16 @@ uint8_t i2c_receive_byte(software_i2c_haldler_t *handler, uint8_t ack)
     return data;
 }
 
-uint8_t i2c_write_reg(software_i2c_haldler_t *handler, uint8_t reg, uint8_t *data_buf, size_t length)
+uint8_t i2c_write_reg(software_i2c_haldler_t *handler, uint8_t slave_address, uint16_t reg, uint8_t *data_buf, size_t length)
 {
+    uint8_t cmd[2] = {0,0};
+
+    cmd[0] = reg >> 8;
+    cmd[1] = reg & 0x00FF;
     i2c_start(handler);
-    i2c_send_byte(handler, SLAVE_ADDRESS << 1);
-    i2c_send_byte(handler, reg);
+    i2c_send_byte(handler, slave_address << 1);
+    i2c_send_byte(handler, cmd[0]);
+    i2c_send_byte(handler, cmd[1]);
     while (length--)
         i2c_send_byte(handler, *data_buf++);
     i2c_stop(handler);
@@ -161,13 +168,18 @@ uint8_t i2c_write_reg(software_i2c_haldler_t *handler, uint8_t reg, uint8_t *dat
     return 0;
 }
 
-uint8_t i2c_read_reg(software_i2c_haldler_t *handler, uint8_t reg, uint8_t *data_buf, size_t length)
+uint8_t i2c_read_reg(software_i2c_haldler_t *handler, uint8_t slave_address, uint16_t reg, uint8_t *data_buf, size_t length)
 {
+    uint8_t cmd[2] = {0,0};
+
+    cmd[0] = reg >> 8;
+    cmd[1] = reg & 0x00FF;
     i2c_start(handler);
-    i2c_send_byte(handler, SLAVE_ADDRESS << 1);
-    i2c_send_byte(handler, reg);
+    i2c_send_byte(handler, slave_address << 1);
+    i2c_send_byte(handler, cmd[0]);
+    i2c_send_byte(handler, cmd[1]);
     i2c_start(handler);
-    i2c_send_byte(handler, (SLAVE_ADDRESS << 1) + 1);
+    i2c_send_byte(handler, ((slave_address << 1) | 0x01));
     while (length > 1L)
     {
         *data_buf++ = i2c_receive_byte(handler, 0);
