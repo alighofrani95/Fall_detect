@@ -40,18 +40,16 @@ def bn_relu(inputs, relu="relu", init_zero=False):
         x = ReLU()(x)
     elif relu == "relu6":
         x = tf.nn.relu6(x)
-    # else:
-    #     pass
     return x
 
 
 def Conv_DWConv_Conv(inputs, out_channels, stride=1):
     x = Conv2D(out_channels, kernel_size=1, padding="same")(inputs)
-    x = bn_relu(x, relu="relu6")
+    x = bn_relu(x, relu="relu")
     x = DepthwiseConv2D(kernel_size=3, strides=1, padding="same")(x)
     x = bn_relu(x, relu=None)
     x = Conv2D(out_channels, kernel_size=1, padding="same")(x)
-    x = bn_relu(x, relu="relu6")
+    x = bn_relu(x, relu="relu")
     return x
 
 
@@ -163,5 +161,5 @@ if __name__ == '__main__':
     inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
     model = TVN(inputs, 100)
     model.summary()
-    plot_model(model, to_file='TVN_shuffle.png',
-               show_layer_names=True, show_shapes=True)
+    # plot_model(model, to_file='TVN_shuffle.png',
+    #            show_layer_names=True, show_shapes=True)

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from keras.optimizers import *
 from keras.preprocessing import image
@@ -9,14 +10,18 @@ from keras.layers import Input
 # from keras.utils.vis_utils import plot_model
 from glob import glob
 
-from tvn import TVN
+# from tvn import TVN
+from tvn_shuffle import TVN
 
 
 seed_n = 7
 batch_size = 64
 epochs = 50
-train_path = "data/train"
-test_path = "data/test"
+
+data_root = "/media/go/02BCD8A4BCD8940F/Users/visiongo/Desktop/github/Fall_detect/data"
+
+train_path = os.path.join(data_root, "train")
+test_path = os.path.join(data_root, "test")
 # trainset_size = len(glob("{}/*/*".format(train_path)))
 # testset_size = len(glob("{}/*/*".format(test_path)))
 
