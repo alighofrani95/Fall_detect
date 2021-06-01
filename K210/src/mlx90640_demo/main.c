@@ -30,6 +30,10 @@ int main()
     printf("Mode:%d\n", mode);
     status = MLX90640_GetFrameData (0x33, mlx90640Frame); 
     printf("GetFrame status:%d\n", status);
+    status = MLX90640_SetRefreshRate(0x33, 0x07);
+    printf("set ref:%d\n", status);
+    status = MLX90640_GetRefreshRate(0x33);
+    printf("refreshrate:%d\n", status);
     tr = 23.15;
     MLX90640_CalculateTo(mlx90640Frame, &mlx90640, emissivity, tr, mlx90640To);
     MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, mlx90640To, mode, &mlx90640);

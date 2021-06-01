@@ -45,7 +45,7 @@ void MLX90640_I2CInit()
     #elif I2C_MODE == I2C_HARDWARE
         fpioa_set_function(SCL_PIN, FUNC_I2C0_SCLK);
         fpioa_set_function(SDA_PIN, FUNC_I2C0_SDA);
-        i2c_init(MLX90640_I2C_DEVICE, 0x33, 7, 5000);
+        i2c_init(MLX90640_I2C_DEVICE, 0x33, 7, 10000);
     #endif
 }
 #if I2C_MODE == I2C_SOFTWARE
