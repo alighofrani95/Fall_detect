@@ -27,9 +27,10 @@ def get_video_fps(path:str) -> int:
     return int(fps)
 
 
-def get_frame_list(num_pick, video_fps, frame_start, frame_end) -> list:
+def get_frame_list(num_pick, num_pick_max, video_fps, frame_start, frame_end) -> list:
     x_list = list()
     per_frame_skip_frame = round(float(video_fps)/float(num_pick))
+    min_per_frame_skip_frame = round(float(video_fps)/float(num_pick_max))
 
     if per_frame_skip_frame > (frame_end - frame_start):
         # raise print("frames are not enough")
@@ -38,7 +39,8 @@ def get_frame_list(num_pick, video_fps, frame_start, frame_end) -> list:
     scope_end = frame_end - per_frame_skip_frame
 
     for i in range(frame_start, scope_end):
-        x_list.append([i, i+per_frame_skip_frame])
+        skip_frame = random.randrange(min_per_frame_skip_frame, per_frame_skip_frame, 1)
+        x_list.append([i, i+skip_frame])
 
     random.shuffle(x_list)
     split_train = int(len(x_list) * 0.8)
@@ -98,7 +100,7 @@ if __name__ == '__main__':
 
         total_frame_num = get_total_frames_num(video_path)
         fps = get_video_fps(video_path)
-        train_x, test_x = get_frame_list(1.5, fps, 0, total_frame_num)
+        train_x, test_x = get_frame_list(0.5, 1.5, fps, 0, total_frame_num)
         gen_img_by_frame_num_list(video_path, train_x)
 
         img_file_count = 0

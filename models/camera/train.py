@@ -18,7 +18,8 @@ seed_n = 7
 batch_size = 64
 epochs = 50
 
-data_root = "/media/go/02BCD8A4BCD8940F/Users/visiongo/Desktop/github/Fall_detect/data"
+# data_root = "/media/go/02BCD8A4BCD8940F/Users/visiongo/Desktop/github/Fall_detect/data"
+data_root = "data"
 
 train_path = os.path.join(data_root, "train")
 test_path = os.path.join(data_root, "test")
