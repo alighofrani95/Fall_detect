@@ -17,18 +17,18 @@
 
 #include <stdint.h>
 
-#define GC0328_ID (0x9d)
-#define GC0328_ADDR (0x21)
+#define GC0328_ID       (0x9d)
+#define GC0328_ADDR     (0x21)
 
 typedef enum {
     FRAMESIZE_INVALID = 0,
     // C/SIF Resolutions
-    FRAMESIZE_QQCIF,  // 88x72
-    FRAMESIZE_QCIF,   // 176x144
-    FRAMESIZE_CIF,    // 352x288
-    FRAMESIZE_QQSIF,  // 88x60
-    FRAMESIZE_QSIF,   // 176x120
-    FRAMESIZE_SIF,    // 352x240
+    FRAMESIZE_QQCIF,    // 88x72
+    FRAMESIZE_QCIF,     // 176x144
+    FRAMESIZE_CIF,      // 352x288
+    FRAMESIZE_QQSIF,    // 88x60
+    FRAMESIZE_QSIF,     // 176x120
+    FRAMESIZE_SIF,      // 352x240
     // VGA Resolutions
     FRAMESIZE_QQQQVGA,  // 40x30
     FRAMESIZE_QQQVGA,   // 80x60
@@ -45,17 +45,18 @@ typedef enum {
     FRAMESIZE_128X128,  // 128x128
     FRAMESIZE_240X240,  // 240x240
     // Other
-    FRAMESIZE_LCD,     // 128x160
-    FRAMESIZE_QQVGA2,  // 128x160
-    FRAMESIZE_WVGA,    // 720x480
-    FRAMESIZE_WVGA2,   // 752x480
-    FRAMESIZE_SVGA,    // 800x600
-    FRAMESIZE_SXGA,    // 1280x1024
-    FRAMESIZE_UXGA,    // 1600x1200
+    FRAMESIZE_LCD,      // 128x160
+    FRAMESIZE_QQVGA2,   // 128x160
+    FRAMESIZE_WVGA,     // 720x480
+    FRAMESIZE_WVGA2,    // 752x480
+    FRAMESIZE_SVGA,     // 800x600
+    FRAMESIZE_SXGA,     // 1280x1024
+    FRAMESIZE_UXGA,     // 1600x1200
 } framesize_t;
 
-// int gc0328_reset(sensor_t*);
-// uint8_t gc0328_scan(void);
+
+//int gc0328_reset(sensor_t*);
+//uint8_t gc0328_scan(void);
 int gc0328_init(void);
 int gc0328_reset(void);
 int gc0328_set_framesize(framesize_t framesize);
