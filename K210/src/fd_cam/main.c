@@ -150,8 +150,6 @@ int main(void)
         g_ram_mux ^= 0x01;
         
         lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
-
-        get_date_time(); //update time
 #endif
     }
     iomem_free(g_lcd_gram0);

@@ -47,7 +47,7 @@ static void io_mux_init(void)
     fpioa_set_function(9, FUNC_SCCB_SDA);
 #if CONFIG_ENABLE_LCD
     /* Init SPI IO map and function settings */
-    fpioa_set_function(8, FUNC_GPIOHS0 + DCX_GPIONUM);
+    fpioa_set_function(8, FUNC_GPIOHS0 + CONFIG_LCD_DCX_GPIONUM);
     fpioa_set_function(6, FUNC_SPI0_SS3);
     fpioa_set_function(7, FUNC_SPI0_SCLK);
 #endif
