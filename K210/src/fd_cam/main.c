@@ -103,10 +103,14 @@ void sensors_init() {
     sysctl_enable_irq();
 
     /* ESP8266 init */
-    LOGD(TAG, "ESP8266 init");
-    esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
-    esp_connect_wifi("thousands", "15177564904");
-    esp_tcp_connect("192.168.43.45", "8000");
+    LOGI(TAG, "ESP8266 init");
+    int ret = 0;
+    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+    ret += esp_connect_wifi("thousands", "15177564904");
+    ret += esp_tcp_connect("192.168.43.1", "8000");
+    if(ret) {
+        LOGE(TAG, "ESP8266 Init Error!");
+    }
 }
 
 int main(void)
@@ -144,7 +148,7 @@ int main(void)
         //     }
         //     printf("\n");
         // }
-        esp_send_data_tcp("test", 100);
+        // esp_send_data_tcp("test", 100);
 #if CONFIG_ENABLE_LCD
         /* display pic*/
         g_ram_mux ^= 0x01;
