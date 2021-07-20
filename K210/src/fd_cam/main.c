@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "sleep.h"
 #include "unistd.h"
 #include "sysctl.h"
 #include "global_config.h"
@@ -12,6 +13,8 @@
 #include "esp8266.h"
 #include "rtc.h"
 #include "syslog.h"
+#include "fall_detect_api.h"
+#include "rgb565_to_bmp.h"
 
 #if CONFIG_ENABLE_LCD
 #include "nt35310.h"
@@ -106,10 +109,15 @@ void sensors_init() {
     LOGI(TAG, "ESP8266 init");
     int ret = 0;
     ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+    msleep(100);
     ret += esp_connect_wifi("thousands", "15177564904");
-    ret += esp_tcp_connect("192.168.43.1", "8000");
+    msleep(100);
+    ret += esp_tcp_connect("rest.fall-test.com", "80");
+    msleep(100);
     if(ret) {
         LOGE(TAG, "ESP8266 Init Error!");
+    } else {
+        LOGI(TAG, "ESP8266 Init Successed!");
     }
 }
 
@@ -133,22 +141,55 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
+    /* API test */
+    // 登录
+    int ret = 0;
+    ret = device_login("Company1", "admin", "test1234");
+    if(ret) {
+        LOGE(TAG, "Login Error %d!", ret);
+    }
+    ret = device_register("fall_0001", "true", NULL);
+    if(ret) {
+        LOGE(TAG, "device_register Error %d!", ret);
+    }
+    ret = device_list(0, 100, NULL);
+    if(ret) {
+        LOGE(TAG, "device_list Error %d!", ret);
+    }
+    ret = fall_event_list(0, 100, NULL);
+    if(ret) {
+        LOGE(TAG, "fall_event_list Error %d!", ret);
+    }
+    ret = fall_event_admin(0, 100, NULL);
+    if(ret) {
+        LOGE(TAG, "fall_event_admin Error %d!", ret);
+    }
+
     while (1)
     {
         /* ai cal finish*/
         while (g_dvp_finish_flag == 0)
             ;
         g_dvp_finish_flag = 0;
+        /* up load img test */
+        // FALL_BMP_File bmp_file;
+        // bmp_file.frame_buf = (uint16_t *)iomem_malloc(320 * 240 * 2);
+        // int flag = 1;
+        // LOGI(TAG, "UPLOAD start");
         // uint8_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
+        // Rgb565ConvertBmp(d, 320, 240, &bmp_file);
+        // fall_event_register(NULL, NULL, &bmp_file, NULL);
+        // flag = 0;
+        // uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
         // for(int i=0;i<240;i++)
         // {
         //     for(int j=0;j<320;j++)
         //     {
-        //         printf("%d ",d[i*320+j]);
+        //         printf("%d,",d[i*320+j]);
         //     }
         //     printf("\n");
         // }
-        // esp_send_data_tcp("test", 100);
+        // while(1);
 #if CONFIG_ENABLE_LCD
         /* display pic*/
         g_ram_mux ^= 0x01;

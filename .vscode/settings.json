@@ -4,6 +4,7 @@
         "*.spec": "python",
         "go_i2c.h": "c",
         "dvp.h": "c",
-        "uart.h": "c"
+        "uart.h": "c",
+        "fall_detect_api.h": "c"
     }
 }

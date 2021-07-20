@@ -6,13 +6,11 @@
 #include <syslog.h>
 #include <assert.h>
 
-#define UART_RECV_MAX_LEN   1024
-
 static const char *TAG = "ESP8266";
-static uart_device_number_t uart_device;
 static uint16_t uart_recv_sta;
-static uint8_t uart_recv_buffer[UART_RECV_MAX_LEN];
+uint8_t esp_uart_recv_buffer[UART_RECV_MAX_LEN];
 esp_uart_recv_mode recv_mode;
+uart_device_number_t uart_device;
 
 static int on_esp_uart_recv(void *ctx) 
 {
@@ -28,14 +26,14 @@ static int on_esp_uart_recv(void *ctx)
     //             uart_recv_sta = 0;
     //         } else {
     //              uart_recv_sta |= 0x8000;	//接收完成了 
-    //              uart_recv_buffer[uart_recv_sta&0X3FFF] = 0;
+    //              esp_uart_recv_buffer[uart_recv_sta&0X3FFF] = 0;
     //         }
     //     } else {
     //         //还没收到0X0D	
     //         if(v_buf == 0x0d) {
     //             uart_recv_sta|=0x4000;
     //         } else {
-    //             uart_recv_buffer[uart_recv_sta&0X3FFF] = v_buf ;
+    //             esp_uart_recv_buffer[uart_recv_sta&0X3FFF] = v_buf ;
     //             uart_recv_sta++;
     //             if(uart_recv_sta > (UART_RECV_MAX_LEN-1)) {
     //                 uart_recv_sta=0;//接收数据错误,重新开始接收	
@@ -51,14 +49,24 @@ static int on_esp_uart_recv(void *ctx)
             //跳过0
             break;
         }
-        uart_recv_buffer[uart_recv_sta++] = v_buf;
+        esp_uart_recv_buffer[uart_recv_sta++] = v_buf;
         if(uart_recv_sta >= UART_RECV_MAX_LEN) {
             //超出缓存
             uart_recv_sta = 0;
         }
-        uart_recv_buffer[uart_recv_sta] = 0;
+        esp_uart_recv_buffer[uart_recv_sta] = 0;
         break;
     
+    case ESP_UART_RECV_MODE_DATA:
+        // uart_send_data(UART_DEVICE_3, &v_buf, 1);
+        esp_uart_recv_buffer[uart_recv_sta++] = v_buf;
+        if(uart_recv_sta >= UART_RECV_MAX_LEN) {
+            //超出缓存
+            uart_recv_sta = 0;
+        }
+        esp_uart_recv_buffer[uart_recv_sta] = 0;
+        break;
+
     default:
         break;
     }
@@ -182,6 +190,8 @@ int esp_send_cmd(uint8_t *cmd, uint8_t *ack, uint64_t wait_time)
 
 void esp_uart_set_recv_mode(esp_uart_recv_mode mode)
 {
+    uart_recv_sta = 0;
+    esp_uart_recv_buffer[0] = 0;
     recv_mode = mode;
 }
 
@@ -190,10 +200,10 @@ uint8_t* esp_check_cmd(uint8_t *str)
     char *strx = NULL;
 
     // if(uart_recv_sta & 0x8000) {
-    //     strx = strstr((const char*)uart_recv_buffer, (const char*)str);
-    //     uart_send_data(UART_DEVICE_3, uart_recv_buffer, strlen(uart_recv_buffer));
+    //     strx = strstr((const char*)esp_uart_recv_buffer, (const char*)str);
+    //     uart_send_data(UART_DEVICE_3, esp_uart_recv_buffer, strlen(esp_uart_recv_buffer));
     // }
-    strx = strstr((const char*)uart_recv_buffer, (const char*)str);
+    strx = strstr((const char*)esp_uart_recv_buffer, (const char*)str);
 
     return (uint8_t *)strx;
 }
