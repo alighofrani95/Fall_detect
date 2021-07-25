@@ -5,6 +5,7 @@
         "go_i2c.h": "c",
         "dvp.h": "c",
         "uart.h": "c",
-        "fall_detect_api.h": "c"
+        "fall_detect_api.h": "c",
+        "rgb565_to_bmp.h": "c"
     }
 }

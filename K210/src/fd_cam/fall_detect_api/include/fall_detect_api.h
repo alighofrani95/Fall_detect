@@ -14,7 +14,7 @@ int device_admin(int page, int size, uint8_t *data);
 /*
  * 事件发生时发送
  */
-int fall_event_register(char *device_sn, char *is_active, FALL_BMP_File *img_file, uint8_t *data);
+int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint8_t *data);
 int fall_event_list(int page, int size, uint8_t *data);
 int fall_event_admin(int page, int size, uint8_t *data);
 

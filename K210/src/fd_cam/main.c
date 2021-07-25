@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "sleep.h"
 #include "unistd.h"
 #include "sysctl.h"
@@ -32,7 +33,6 @@ volatile uint8_t g_dvp_finish_flag;
 
 volatile uint8_t g_ram_mux;
 #if CONFIG_ENABLE_LCD
-static uint32_t time_ram[8 * 16 * 8 / 2];
 
 void rgb888_to_lcd(uint8_t *src, uint16_t *dest, size_t width, size_t height)
 {
@@ -108,12 +108,14 @@ void sensors_init() {
     /* ESP8266 init */
     LOGI(TAG, "ESP8266 init");
     int ret = 0;
-    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+    #ifdef CONFIG_KD233
+        ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+        msleep(100);
+    #endif
+    ret += esp_connect_wifi(WIFI_SSID, WIFI_PASSWORD);
     msleep(100);
-    ret += esp_connect_wifi("thousands", "15177564904");
-    msleep(100);
-    ret += esp_tcp_connect("rest.fall-test.com", "80");
-    msleep(100);
+    // 启用单连接模式
+    ret += esp_send_cmd("AT+CIPMUX=0", "OK", 50);
     if(ret) {
         LOGE(TAG, "ESP8266 Init Error!");
     } else {
@@ -141,29 +143,35 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-    /* API test */
+    uint8_t *img = (uint8_t *)malloc(320*240);
+    
+    // /* API test */
     // 登录
     int ret = 0;
-    ret = device_login("Company1", "admin", "test1234");
+    ret = device_login(COMPANY, USER_NAME, PASSWORD);
     if(ret) {
         LOGE(TAG, "Login Error %d!", ret);
     }
-    ret = device_register("fall_0001", "true", NULL);
+    ret = fall_event_register(DEVICE_SN, "true", img, NULL);
     if(ret) {
-        LOGE(TAG, "device_register Error %d!", ret);
+        LOGE(TAG, "Upload Error!");
     }
-    ret = device_list(0, 100, NULL);
-    if(ret) {
-        LOGE(TAG, "device_list Error %d!", ret);
-    }
-    ret = fall_event_list(0, 100, NULL);
-    if(ret) {
-        LOGE(TAG, "fall_event_list Error %d!", ret);
-    }
-    ret = fall_event_admin(0, 100, NULL);
-    if(ret) {
-        LOGE(TAG, "fall_event_admin Error %d!", ret);
-    }
+    // ret = device_register(DEVICE_SN, "true", NULL);
+    // if(ret) {
+    //     LOGE(TAG, "device_register Error %d!", ret);
+    // }
+    // ret = device_list(0, 100, NULL);
+    // if(ret) {
+    //     LOGE(TAG, "device_list Error %d!", ret);
+    // }
+    // ret = fall_event_list(0, 100, NULL);
+    // if(ret) {
+    //     LOGE(TAG, "fall_event_list Error %d!", ret);
+    // }
+    // ret = fall_event_admin(0, 100, NULL);
+    // if(ret) {
+    //     LOGE(TAG, "fall_event_admin Error %d!", ret);
+    // }
 
     while (1)
     {
@@ -171,15 +179,6 @@ int main(void)
         while (g_dvp_finish_flag == 0)
             ;
         g_dvp_finish_flag = 0;
-        /* up load img test */
-        // FALL_BMP_File bmp_file;
-        // bmp_file.frame_buf = (uint16_t *)iomem_malloc(320 * 240 * 2);
-        // int flag = 1;
-        // LOGI(TAG, "UPLOAD start");
-        // uint8_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
-        // Rgb565ConvertBmp(d, 320, 240, &bmp_file);
-        // fall_event_register(NULL, NULL, &bmp_file, NULL);
-        // flag = 0;
         // uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
         // for(int i=0;i<240;i++)
         // {
@@ -195,6 +194,21 @@ int main(void)
         g_ram_mux ^= 0x01;
         
         lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
+        /* up load img test */
+        // ret++;
+        // if(ret == 300) {
+        //     LOGI(TAG, "UPLOAD start");
+        //     uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
+        //     for(int i = 0; i < 320*240; i++) {
+        //         img[i] = ((d[i] & (uint16_t)0x07E0) >> 5);
+        //     }
+        //     for(int i = 0; i < 320*240; i++) {
+        //         printf("%d,", img[i]);
+        //     }
+        //     fall_event_register(DEVICE_SN, "true", img, NULL);
+        //     ret = 0;
+        // }
+        // msleep(1);
 #endif
     }
     iomem_free(g_lcd_gram0);

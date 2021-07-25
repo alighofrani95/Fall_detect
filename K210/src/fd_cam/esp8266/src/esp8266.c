@@ -162,17 +162,37 @@ int esp_tcp_connect(char *ip, char *port)
     return ret;
 }
 
+int esp_tcp_start_trans()
+{
+    int ret = 0;
+
+    ret += esp_send_cmd("AT+CIPMODE=1", "OK", 200);
+    ret += esp_send_cmd("AT+CIPSEND", ">", 200);
+
+    return ret;
+}
+
+int esp_tcp_quit_trans()
+{
+    uart_send_data(uart_device, "+++", 3);
+    msleep(50);
+
+    return 0;
+}
+
 int esp_send_cmd(uint8_t *cmd, uint8_t *ack, uint64_t wait_time)
 {
     int res = 0;
     
     uart_recv_sta = 0;
+    if(ack && wait_time) {
+        esp_uart_set_recv_mode(ESP_UART_RECV_MODE_CHECK);
+    }
     uart_send_data(uart_device, cmd, strlen(cmd));
     uart_send_data(uart_device, "\r\n", 2);
     // uart_send_data(UART_DEVICE_3, cmd, strlen(cmd));
     // uart_send_data(UART_DEVICE_3, "\r\n", 2);
     if(ack && wait_time) {
-        esp_uart_set_recv_mode(ESP_UART_RECV_MODE_CHECK);
         while(--wait_time) {
             msleep(10);
             if(uart_recv_sta && esp_check_cmd(ack)) {

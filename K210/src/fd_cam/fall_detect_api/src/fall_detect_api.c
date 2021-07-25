@@ -3,6 +3,7 @@
 #include "iomem.h"
 #include "http_client.h"
 #include "syslog.h"
+#include "global_config.h"
 #include <stdio.h>
 #include <sleep.h>
 #include <string.h>
@@ -102,7 +103,7 @@ int device_admin(int page, int size, uint8_t *data)
 /*
  * POST등록 form
  */
-int fall_event_register(char *device_sn, char *is_active, FALL_BMP_File *img_file, uint8_t *data)
+int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint8_t *data)
 {
     char head[1024] = { 0 };
     char head_host[1024] = { 0 };
@@ -111,77 +112,64 @@ int fall_event_register(char *device_sn, char *is_active, FALL_BMP_File *img_fil
     int wait_time = 100;
     respon_t respon;
 
-    // //confirm wifi status
-    // if(esp_send_cmd("AT+CWSTATE?", "+CWSTATE:1",50)) {
-    //     return -1;
-    // }
-    // //confirm tcp connection
-    // if(esp_send_cmd("AT+CIPSTATUS", "STATUS:3",50)) {
-    //     return -1;
-    // }
-    sprintf(head, "POST %s HTTP/1.1\r\n", "/api/fall-events/upload");
-    sprintf(head_host, "Host: %s\r\n", host);
-    sprintf(head_token, "Authorization: %s\r\n", token);
-    // if(json_data) {
-        sprintf(head_length, "Content-Length: %d\r\n", 154038);
-    // }
+    //confirm wifi status
+    if(esp_send_cmd("AT+CWJAP?", "OK",50)) {
+        int ret = 0;
+        #ifdef CONFIG_KD233
+            ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+            msleep(100);
+        #endif
+        ret += esp_connect_wifi(WIFI_SSID, WIFI_PASSWORD);
+        msleep(100);
+        if(ret) {
+            return -1;
+        }
+    }
+    sprintf(head, "POST %s HTTP/1.1\r\n", "/cgi-bin/post.py");
+    sprintf(head_host, "Host: %s\r\n", HOST_VIDEO);
+    sprintf(head_length, "Content-Length: %ld\r\n", 80*60+478+strlen(device_sn)+strlen(is_active)+strlen(token));
+    // tcp connection
+    if(esp_tcp_connect(HOST_VIDEO, HOST_VIDEO_PORT)) {
+        return -1;
+    }
     //开启透传模式
-    esp_send_cmd("AT+CIPMODE=1", "OK", 200);
-    esp_send_cmd("AT+CIPSEND", ">", 200);
+    esp_tcp_start_trans();
     esp_uart_set_recv_mode(ESP_UART_RECV_MODE_DATA);
     //发送数据
     uart_send_data(uart_device, head, strlen(head));
     uart_send_data(uart_device, head_host, strlen(head_host));
-    uart_send_data(uart_device, head_token, strlen(head_token));
-    uart_send_data(uart_device, "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 83);
     uart_send_data(uart_device, head_length, strlen(head_length));
+    uart_send_data(uart_device, "Connection: keep-alive\r\n", 24);
+    uart_send_data(uart_device, "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 83);
     uart_send_data(uart_device, "\r\n", 2);
-    uart_send_data(uart_device, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-    uart_send_data(uart_device, "Content-Disposition: form-data; name=\"file\"; filename=\"Sample.bmp\"\r\n", 68);
-    uart_send_data(uart_device, "Content-Type: image/bmp\r\n\r\n", 27);
-    uart_send_data(uart_device, &img_file->BMPHead, sizeof(img_file->BMPHead));
-    uart_send_data(uart_device, &img_file->BMIHead, sizeof(img_file->BMIHead));
-    uart_send_data(uart_device, img_file->RgbQuadClr, 3*sizeof(RgbQuad));
-    uart_send_data(uart_device, img_file->frame_buf, 320*240*sizeof(uint16_t));
+    // POST DATA
+    //token
+    uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 41);
+    uart_send_data(uart_device, "Content-Disposition: form-data; name=\"token\"\r\n\r\n", 48);
+    uart_send_data(uart_device, token, strlen(token));
     uart_send_data(uart_device, "\r\n", 2);
-    uart_send_data(uart_device, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
+    //img data
+    uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 41);
+    uart_send_data(uart_device, "Content-Disposition: form-data; name=\"img_data\"; filename=\"img.bytes\"\r\n", 71);
+    uart_send_data(uart_device, "Content-Type: application/octet-stream\r\n\r\n", 42);
+    //send img data
+    // uart_send_data(uart_device, "(data)", 6);
+    for(int i = 0; i < 80*60; i++) {
+        uart_send_data(uart_device, img_buf[i], 1);
+    }
+    uart_send_data(uart_device, "\r\n", 2);
+    //device sn
+    uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 41);
     uart_send_data(uart_device, "Content-Disposition: form-data; name=\"deviceSN\"\r\n\r\n", 51);
-    uart_send_data(uart_device, "fall_0001\r\n", 11);
-    uart_send_data(uart_device, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
+    uart_send_data(uart_device, device_sn, strlen(device_sn));
+    uart_send_data(uart_device, "\r\n", 2);
+    //isactive
+    uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 41);
     uart_send_data(uart_device, "Content-Disposition: form-data; name=\"isActive\"\r\n\r\n", 51);
-    uart_send_data(uart_device, "true\r\n", 6);
-    uart_send_data(uart_device, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-
-    // uart_send_data(UART_DEVICE_3, head, strlen(head));
-    // uart_send_data(UART_DEVICE_3, head_host, strlen(head_host));
-    // uart_send_data(UART_DEVICE_3, head_token, strlen(head_token));
-    // uart_send_data(UART_DEVICE_3, "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 83);
-    // uart_send_data(UART_DEVICE_3, head_length, strlen(head_length));
-    // uart_send_data(UART_DEVICE_3, "\r\n", 2);
-    // uart_send_data(UART_DEVICE_3, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-    // uart_send_data(UART_DEVICE_3, "Content-Disposition: form-data; name=\"file\"; filename=\"Sample.bmp\"\r\n", 68);
-    // uart_send_data(UART_DEVICE_3, "Content-Type: image/bmp\r\n\r\n", 27);
-    // uart_send_data(UART_DEVICE_3, &img_file->BMPHead, sizeof(img_file->BMPHead));
-    // uart_send_data(UART_DEVICE_3, &img_file->BMIHead, sizeof(img_file->BMIHead));
-    // uart_send_data(UART_DEVICE_3, img_file->RgbQuadClr, 3*sizeof(RgbQuad));
-    // uart_send_data(UART_DEVICE_3, img_file->frame_buf, 320*240*sizeof(uint16_t));
-    // uart_send_data(UART_DEVICE_3, "\r\n", 2);
-    // uart_send_data(UART_DEVICE_3, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-    // uart_send_data(UART_DEVICE_3, "Content-Disposition: form-data; name=\"deviceSN\"\r\n\r\n", 51);
-    // uart_send_data(UART_DEVICE_3, "fall_0001\r\n", 11);
-    // uart_send_data(UART_DEVICE_3, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-    // uart_send_data(UART_DEVICE_3, "Content-Disposition: form-data; name=\"isActive\"\r\n\r\n", 51);
-    // uart_send_data(UART_DEVICE_3, "true\r\n", 6);
-    // uart_send_data(UART_DEVICE_3, "----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 39);
-// 	fwrite(&bmfHdr, 1, sizeof(BitMapFileHeader), fp); 
-// 	fwrite(&bmiHdr, 1, sizeof(BitMapInfoHeader), fp); 
-// 	fwrite(&bmiClr, 1, 3*sizeof(RgbQuad), fp);
- 
-// //	fwrite(buf, 1, bmiHdr.biSizeImage, fp);	//mirror
-// 	for(int i=0; i<height; i++){
-// 		fwrite(buf+(width*(height-i-1)*2), 2, width, fp);
-// 	}
-    msleep(200);    //wait respon
+    uart_send_data(uart_device, is_active, strlen(is_active));
+    uart_send_data(uart_device, "\r\n", 2);
+    uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n", 43);
+    msleep(100);    //wait respon
     //解析
     while(wait_time--) {
         char *ret = strstr(esp_uart_recv_buffer, "HTTP/1.1 ");
@@ -189,48 +177,32 @@ int fall_event_register(char *device_sn, char *is_active, FALL_BMP_File *img_fil
             ret += 9;
             sscanf(ret, "%d", &respon.state);
             msleep(100);
-            while (wait_time--) {
-                ret = strstr(esp_uart_recv_buffer, "Content-Length: ");
-                if(ret) {
-                    ret += 16;
-                    sscanf(ret, "%d", &respon.data_length);
-                    msleep(100);
-                    while (wait_time--) {
-                        ret = strstr(esp_uart_recv_buffer, "\r\n\r\n");
-                        if(ret) {
-                            ret += 4;
-                            msleep(100);
-                            while (wait_time--) {
-                                if(strlen(ret) >= respon.data_length) {
-                                    memcpy(respon.data, ret, strlen(ret));
-                                    respon.data[respon.data_length] = 0;
-                                }
-                                msleep(10);
-                            }
-                            break;
-                        }
-                        msleep(10);
-                    }
-                    break;
-                }
-                msleep(10);
-            }
             break;
         }
         msleep(10);
     }
+    if(wait_time <= 0) {
+        esp_tcp_quit_trans();
+        return -1;
+    }
+    respon.data_length = strlen(esp_uart_recv_buffer);
+    memcpy(respon.data, esp_uart_recv_buffer, respon.data_length);
+    respon.data[respon.data_length] = 0;
     //退出透传模式
-    uart_send_data(uart_device, "+++", 3);
+    esp_tcp_quit_trans();
+    // 断开连接
+    esp_send_cmd("AT+CIPCLOSE", 0, 20);
     msleep(10);
+    esp_uart_set_recv_mode(ESP_UART_RECV_MODE_MAX);
     LOGD(TAG, "%s", respon.data);
     if(data) {
         memcpy(data, respon.data, respon.data_length);
     }
     if(respon.state == 200) {
         return 0;
-    } else {
-        return respon.state;
     }
+
+    return respon.state;
 }
 
 /*
