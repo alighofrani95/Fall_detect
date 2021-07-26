@@ -10,7 +10,7 @@
 #define HOST_FALL_PORT                      "80"
 #define HOST_VIDEO                          "3.35.0.186"
 #define HOST_VIDEO_PORT                     "80"
-#define WIFI_SSID                           "thousands"
+#define WIFI_SSID                           "GUET-NB"
 #define WIFI_PASSWORD                       "15177564904"
 
 // Board

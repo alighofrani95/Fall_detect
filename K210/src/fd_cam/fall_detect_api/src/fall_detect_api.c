@@ -8,7 +8,7 @@
 #include <sleep.h>
 #include <string.h>
 
-#define IMG_NUMS    1
+#define IMG_NUMS    5
 
 static const char *TAG = "fall_detect_api";
 static char token[256] = { 0 };
