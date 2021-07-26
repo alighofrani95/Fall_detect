@@ -144,6 +144,10 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
     uint8_t *img = (uint8_t *)malloc(320*240);
+    // uint8_t img[80*60] = { 0 };
+    // for(int i = 0; i < 80*60; i++) {
+    //     img[i] = i + 48;
+    // }
     
     // /* API test */
     // 登录
@@ -154,7 +158,7 @@ int main(void)
     }
     ret = fall_event_register(DEVICE_SN, "true", img, NULL);
     if(ret) {
-        LOGE(TAG, "Upload Error!");
+        LOGE(TAG, "Upload Error %d!", ret);
     }
     // ret = device_register(DEVICE_SN, "true", NULL);
     // if(ret) {
@@ -199,11 +203,16 @@ int main(void)
         // if(ret == 300) {
         //     LOGI(TAG, "UPLOAD start");
         //     uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
-        //     for(int i = 0; i < 320*240; i++) {
-        //         img[i] = ((d[i] & (uint16_t)0x07E0) >> 5);
-        //     }
-        //     for(int i = 0; i < 320*240; i++) {
-        //         printf("%d,", img[i]);
+        //     // for(int i = 0; i < 320*240; i++) {
+        //     //     img[i] = ((d[i] & (uint16_t)0x07E0) >> 5);
+        //     // }
+        //     // for(int i = 0; i < 320*240; i++) {
+        //     //     printf("%d,", img[i]);
+        //     // }
+        //     for(int i = 0, k = 0; i < 320; i+=4, k++) {
+        //         for(int j = 0, l = 0; j < 240; j+=4, l++) {
+        //             img[k*80+l] = ((d[i*320+j] & (uint16_t)0x07E0) >> 5);
+        //         }
         //     }
         //     fall_event_register(DEVICE_SN, "true", img, NULL);
         //     ret = 0;

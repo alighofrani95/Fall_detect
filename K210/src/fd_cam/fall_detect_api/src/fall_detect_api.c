@@ -8,6 +8,8 @@
 #include <sleep.h>
 #include <string.h>
 
+#define IMG_NUMS    1
+
 static const char *TAG = "fall_detect_api";
 static char token[256] = { 0 };
 static char *host = "rest.fall-test.com";
@@ -127,7 +129,7 @@ int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint
     }
     sprintf(head, "POST %s HTTP/1.1\r\n", "/cgi-bin/post.py");
     sprintf(head_host, "Host: %s\r\n", HOST_VIDEO);
-    sprintf(head_length, "Content-Length: %ld\r\n", 80*60+478+strlen(device_sn)+strlen(is_active)+strlen(token));
+    sprintf(head_length, "Content-Length: %ld\r\n", 80*60*IMG_NUMS+478+strlen(device_sn)+strlen(is_active)+strlen(token));
     // tcp connection
     if(esp_tcp_connect(HOST_VIDEO, HOST_VIDEO_PORT)) {
         return -1;
@@ -136,9 +138,11 @@ int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint
     esp_tcp_start_trans();
     esp_uart_set_recv_mode(ESP_UART_RECV_MODE_DATA);
     //发送数据
+    // uart_device = UART_DEVICE_3;
     uart_send_data(uart_device, head, strlen(head));
     uart_send_data(uart_device, head_host, strlen(head_host));
     uart_send_data(uart_device, head_length, strlen(head_length));
+    uart_send_data(uart_device, "Keep-Alive: timeout=5, max=100\r\n", 32);
     uart_send_data(uart_device, "Connection: keep-alive\r\n", 24);
     uart_send_data(uart_device, "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n", 83);
     uart_send_data(uart_device, "\r\n", 2);
@@ -154,8 +158,8 @@ int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint
     uart_send_data(uart_device, "Content-Type: application/octet-stream\r\n\r\n", 42);
     //send img data
     // uart_send_data(uart_device, "(data)", 6);
-    for(int i = 0; i < 80*60; i++) {
-        uart_send_data(uart_device, img_buf[i], 1);
+    for(int i = 0; i < 60*IMG_NUMS; i++) {
+        uart_send_data(uart_device, &img_buf[i*80], 80);
     }
     uart_send_data(uart_device, "\r\n", 2);
     //device sn
@@ -169,22 +173,22 @@ int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint
     uart_send_data(uart_device, is_active, strlen(is_active));
     uart_send_data(uart_device, "\r\n", 2);
     uart_send_data(uart_device, "------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n", 43);
-    msleep(100);    //wait respon
+    // uart_device = UART_DEVICE_1;
+    msleep(5000);    //wait respon
     //解析
     while(wait_time--) {
         char *ret = strstr(esp_uart_recv_buffer, "HTTP/1.1 ");
         if(ret) {
             ret += 9;
             sscanf(ret, "%d", &respon.state);
-            msleep(100);
             break;
         }
         msleep(10);
     }
-    if(wait_time <= 0) {
-        esp_tcp_quit_trans();
-        return -1;
-    }
+    // if(wait_time <= 0) {
+    //     esp_tcp_quit_trans();
+    //     return -1;
+    // }
     respon.data_length = strlen(esp_uart_recv_buffer);
     memcpy(respon.data, esp_uart_recv_buffer, respon.data_length);
     respon.data[respon.data_length] = 0;
@@ -202,7 +206,7 @@ int fall_event_register(char *device_sn, char *is_active, uint8_t *img_buf, uint
         return 0;
     }
 
-    return respon.state;
+    return respon.state == 0 ? -1 : respon.state;
 }
 
 /*
