@@ -5,6 +5,8 @@
 #include <sleep.h>
 #include <syslog.h>
 #include <assert.h>
+#include "gpio.h"
+#include "global_config.h"
 
 static const char *TAG = "ESP8266";
 static uint16_t uart_recv_sta;
@@ -81,6 +83,25 @@ int esp_init(esp_mode mode, uint8_t uart, uint8_t tx_pin, uint8_t rx_pin)
     int ret = 0;
 
     uart_device = uart;
+    /* init esp pin */
+    #if CONFIG_MAIX_NANO
+        fpioa_set_function(20, FUNC_GPIO0);
+        fpioa_set_function(15, FUNC_GPIO1);
+        fpioa_set_function(8, FUNC_GPIO2);
+        fpioa_set_function(21, FUNC_GPIO3);
+        //IO2 HIGH
+        gpio_set_drive_mode(0, GPIO_DM_OUTPUT);
+        gpio_set_pin(0, GPIO_PV_HIGH);
+        //IO0 HIGH
+        gpio_set_drive_mode(1, GPIO_DM_OUTPUT);
+        gpio_set_pin(1, GPIO_PV_HIGH);
+        //CHPD HIGH
+        gpio_set_drive_mode(2, GPIO_DM_OUTPUT);
+        gpio_set_pin(2, GPIO_PV_HIGH);
+        //RST HIGH
+        gpio_set_drive_mode(3, GPIO_DM_OUTPUT);
+        gpio_set_pin(3, GPIO_PV_HIGH);
+    #endif
     /* init uart*/
     switch (uart_device)
     {

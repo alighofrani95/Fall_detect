@@ -112,6 +112,10 @@ void sensors_init() {
         ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
         msleep(100);
     #endif
+    #ifdef CONFIG_MAIX_NANO
+        ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 6, 7);
+        msleep(100);
+    #endif
     ret += esp_connect_wifi(WIFI_SSID, WIFI_PASSWORD);
     msleep(100);
     // 启用单连接模式

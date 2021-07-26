@@ -15,6 +15,7 @@
 
 // Board
 #define CONFIG_MAIX_DOCK                    0
+#define CONFIG_MAIX_NANO                    0
 #define CONFIG_KD233                        1
 
 // Camera
@@ -25,7 +26,7 @@
 #define CONFIG_CAMERA_RESOLUTION_HEIGHT     240
 
 // LCD
-#define CONFIG_ENABLE_LCD                   1
+#define CONFIG_ENABLE_LCD                   0
 #define CONFIG_LCD_DCX_GPIONUM              2
 #define CONFIG_LCD_RST_GPIONUM              3
 #define CONFIG_LCD_SPI_CHANNEL              0

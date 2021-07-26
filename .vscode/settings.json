@@ -6,6 +6,9 @@
         "dvp.h": "c",
         "uart.h": "c",
         "fall_detect_api.h": "c",
-        "rgb565_to_bmp.h": "c"
+        "rgb565_to_bmp.h": "c",
+        "glob.h": "c",
+        "gpio.h": "c",
+        "gpiohs.h": "c"
     }
 }
