@@ -9,6 +9,12 @@
         "rgb565_to_bmp.h": "c",
         "glob.h": "c",
         "gpio.h": "c",
-        "gpiohs.h": "c"
+        "gpiohs.h": "c",
+        "camera.h": "c",
+        "esp8266.h": "c",
+        "w25qxx.h": "c",
+        "stdio.h": "c",
+        "image_process.h": "c",
+        "unistd.h": "c"
     }
 }

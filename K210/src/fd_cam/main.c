@@ -1,28 +1,30 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include "sleep.h"
-#include "unistd.h"
-#include "sysctl.h"
+#include <string.h>
 #include "global_config.h"
+#include "sleep.h"
+#include "sysctl.h"
+#include "unistd.h"
+#include "bsp.h"
 
+#include "ai_engine.h"
+#include "camera.h"
 #include "dvp.h"
+#include "esp8266.h"
+#include "fall_detect_api.h"
 #include "fpioa.h"
+#include "image_process.h"
 #include "iomem.h"
 #include "plic.h"
-#include "camera.h"
-#include "esp8266.h"
+#include "rgb565_to_bmp.h"
 #include "rtc.h"
 #include "syslog.h"
-#include "fall_detect_api.h"
-#include "rgb565_to_bmp.h"
+#include "w25qxx.h"
 
 #if CONFIG_ENABLE_LCD
-#include "nt35310.h"
 #include "lcd.h"
+#include "nt35310.h"
 #endif
-
-
 
 static const char *TAG = "MAIN";
 
@@ -30,6 +32,15 @@ static uint32_t *g_lcd_gram0;
 static uint32_t *g_lcd_gram1;
 volatile uint8_t g_dvp_finish_flag;
 
+// added by noahzhy
+volatile uint8_t flag_image_pos; // a flag which image.addr is previous or next frame -> img_ai_buf
+static uint8_t *model_data;
+static image_t g_ai_buf, img_ai_buf;
+volatile int res_fall_down = 0;
+kpu_model_context_t fall_detect_task;
+
+// a images array for storing 5 frames to send
+volatile image_t imgs_80x60x5;
 
 volatile uint8_t g_ram_mux;
 #if CONFIG_ENABLE_LCD
@@ -37,7 +48,7 @@ volatile uint8_t g_ram_mux;
 void rgb888_to_lcd(uint8_t *src, uint16_t *dest, size_t width, size_t height)
 {
     size_t chn_size = width * height;
-    for (size_t i = 0; i < width * height; i++)
+    for(size_t i = 0; i < width * height; i++)
     {
         uint8_t r = src[i];
         uint8_t g = src[chn_size + i];
@@ -52,17 +63,15 @@ void rgb888_to_lcd(uint8_t *src, uint16_t *dest, size_t width, size_t height)
 
 static int on_irq_dvp(void *ctx)
 {
-    if (dvp_get_interrupt(DVP_STS_FRAME_FINISH))
+    if(dvp_get_interrupt(DVP_STS_FRAME_FINISH))
     {
         /* switch gram */
         dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0 : (uint32_t)g_lcd_gram1);
-        
         dvp_clear_interrupt(DVP_STS_FRAME_FINISH);
         g_dvp_finish_flag = 1;
-    }
-    else
+    } else
     {
-        if (g_dvp_finish_flag == 0)
+        if(g_dvp_finish_flag == 0)
             dvp_start_convert();
         dvp_clear_interrupt(DVP_STS_FRAME_START);
     }
@@ -70,7 +79,8 @@ static int on_irq_dvp(void *ctx)
     return 0;
 }
 
-void sensors_init() {
+void sensors_init()
+{
     /* DVP init */
     LOGI(TAG, "DVP init");
     camera_init();
@@ -90,12 +100,24 @@ void sensors_init() {
     g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 2);
     g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 2);
 
+    g_ai_buf.depth = 3;
+    g_ai_buf.width = 320;
+    g_ai_buf.height = 240;
+    image_init(&g_ai_buf);
+    img_ai_buf.depth = 1;
+    img_ai_buf.width = 320;
+    img_ai_buf.height = 480;
+    image_init(&img_ai_buf);
 
-    dvp_set_ai_addr((uint32_t)0x40600000, (uint32_t)0x40612C00, (uint32_t)0x40625800);
+    imgs_80x60x5.depth = 1;
+    imgs_80x60x5.width = FRAME_WIDTH;
+    imgs_80x60x5.height = FRAME_HEIGHT*FRAMES_NUM;
+    image_init(&imgs_80x60x5);
+
+    dvp_set_ai_addr((uint32_t)g_ai_buf.addr, (uint32_t)(g_ai_buf.addr + 320 * 240), (uint32_t)(g_ai_buf.addr + 320 * 240 * 2));
     dvp_set_display_addr((uint32_t)g_lcd_gram0);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
     dvp_disable_auto();
-
     /* DVP interrupt config */
     LOGD(TAG, "DVP interrupt config");
     plic_set_priority(IRQN_DVP_INTERRUPT, 2);
@@ -108,23 +130,78 @@ void sensors_init() {
     /* ESP8266 init */
     LOGI(TAG, "ESP8266 init");
     int ret = 0;
-    #ifdef CONFIG_KD233
-        ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
-        msleep(100);
-    #endif
-    #ifdef CONFIG_MAIX_NANO
-        ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 6, 7);
-        msleep(100);
-    #endif
+#ifdef CONFIG_KD233
+    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
+    msleep(100);
+#endif
+#ifdef CONFIG_MAIX_NANO
+    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 6, 7);
+    msleep(100);
+#endif
     ret += esp_connect_wifi(WIFI_SSID, WIFI_PASSWORD);
     msleep(100);
     // 启用单连接模式
     ret += esp_send_cmd("AT+CIPMUX=0", "OK", 50);
-    if(ret) {
+    if(ret)
+    {
         LOGE(TAG, "ESP8266 Init Error!");
-    } else {
+    } else
+    {
         LOGI(TAG, "ESP8266 Init Successed!");
     }
+}
+
+void init_model()
+{
+    LOGI(TAG, "Load AI model");
+    model_data = (uint8_t *)malloc(KMODEL_SIZE + 255);
+    uint8_t *model_data_align = (uint8_t *)(((uintptr_t)model_data + 255) & (~255));
+    w25qxx_read_data(KMODEL_ADDR, model_data_align, KMODEL_SIZE, W25QXX_QUAD_FAST);
+
+    if((kpu_load_kmodel(&fall_detect_task, model_data_align) != 0))
+    {
+        while(1)
+        {
+            printf("[ERRO] Model Init Error\n");
+        }
+    }
+
+    return;
+}
+
+int fall_detect(kpu_model_context_t *task, image_t *image)
+{
+    float *output_features;
+    size_t output_size;
+
+    ai_infer(task, image->addr, &output_features, &output_size);
+    // printf("[INFO] fall detect result: %f\n", output_features[0]);
+    return sigmoid(output_features);
+}
+
+int core1_tasks(void *ctx) {
+    while (1) {
+        // Parameters:
+        // g_ai_buf(320x240x3): the original frame
+        // img_ai_buf(320x480x1): two frames only green channel, thus the height is 480
+        // imgs_80x60x5(80x60x1): the five frames that ready to send if someone was falling down
+        // flag_image_pos: a flag which current frame is previous or next frame
+        // res_fall_down: a flag of fall-down event
+        // TODO:
+        // get original frame that size is 320x240 each half-second
+        // img_ai_buf consists of two frames(only green channel) that every two frames intervals of half-second
+        // there is a function which named 'image_resize' to resize the single channel image to 80x60
+        // if someone was falling down, put resized frame in the image array(imgs_80x60x5) each half-second
+        // send it
+        /* send active status(
+            {
+                "deviceSN" : "fall_0001",
+                "isActive" : true
+            }
+            ) via wifi every minute
+        */
+    }
+return 0;
 }
 
 int main(void)
@@ -135,33 +212,39 @@ int main(void)
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
 
     plic_init();
-    rtc_init(); 
+    rtc_init();
 
     /* sensor init */
     sensors_init();
 
+#if AI_TEST_MODE
+    // load AI model from flash
+    init_model();
+#endif
     /* system start */
     LOGI(TAG, "System start");
     g_ram_mux = 0;
-    g_dvp_finish_flag = 0;
-    dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
-    dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-    uint8_t *img = (uint8_t *)malloc(320*240);
-    // uint8_t img[80*60] = { 0 };
+    // g_dvp_finish_flag = 0;
+    // dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
+    // dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
+
+    // uint8_t *img = (uint8_t *)malloc(320*240);
     // for(int i = 0; i < 80*60; i++) {
     //     img[i] = i + 48;
     // }
-    
+
     // /* API test */
     // 登录
     int ret = 0;
     ret = device_login(COMPANY, USER_NAME, PASSWORD);
-    if(ret) {
+    if(ret)
+    {
         LOGE(TAG, "Login Error %d!", ret);
     }
     ret = fall_event_register(DEVICE_SN, "true", img, NULL);
-    if(ret) {
+    if(ret)
+    {
         LOGE(TAG, "Upload Error %d!", ret);
     }
     // ret = device_register(DEVICE_SN, "true", NULL);
@@ -181,12 +264,26 @@ int main(void)
     //     LOGE(TAG, "fall_event_admin Error %d!", ret);
     // }
 
-    while (1)
+    // dvp_set_ai_addr((uint32_t)g_ai_buf, (uint32_t)(g_ai_buf + 320 * 240), (uint32_t)(g_ai_buf + 320 * 240 * 2));
+    // dvp_set_display_addr((uint32_t)g_lcd_gram0);
+    // dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
+    // dvp_disable_auto();
+
+    register_core1(core1_tasks, NULL);
+    /* enable global interrupt */
+    sysctl_enable_irq();
+    while(1)
     {
         /* ai cal finish*/
-        while (g_dvp_finish_flag == 0)
-            ;
         g_dvp_finish_flag = 0;
+        dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
+        dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
+        while(g_dvp_finish_flag == 0)
+            ;
+
+#if AI_TEST_MODE
+        res_fall_down = fall_detect(&fall_detect_task, &img_ai_buf);
+#endif
         // uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
         // for(int i=0;i<240;i++)
         // {
@@ -200,7 +297,7 @@ int main(void)
 #if CONFIG_ENABLE_LCD
         /* display pic*/
         g_ram_mux ^= 0x01;
-        
+
         lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
         /* up load img test */
         // ret++;
@@ -226,5 +323,8 @@ int main(void)
     }
     iomem_free(g_lcd_gram0);
     iomem_free(g_lcd_gram1);
+
+    image_deinit(&g_ai_buf);
+    image_deinit(&img_ai_buf);
     return 0;
 }
