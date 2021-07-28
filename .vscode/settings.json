@@ -15,6 +15,7 @@
         "w25qxx.h": "c",
         "stdio.h": "c",
         "image_process.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "gc0328.h": "c"
     }
 }
