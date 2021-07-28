@@ -93,6 +93,7 @@ static void io_set_power(void)
     /* Set dvp and spi pin to 1.8V */
     sysctl_set_power_mode(SYSCTL_POWER_BANK1, SYSCTL_POWER_V18);
     sysctl_set_power_mode(SYSCTL_POWER_BANK2, SYSCTL_POWER_V18);
+    
 #elif CONFIG_MAIX_NANO
     /* Set dvp and spi pin to 1.8V */
     sysctl_set_power_mode(SYSCTL_POWER_BANK6, SYSCTL_POWER_V18);
@@ -144,8 +145,8 @@ void camera_init()
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
-    dvp_set_image_format(DVP_CFG_YUV_FORMAT);
-    dvp_set_image_size(320, 240);
+    dvp_set_image_format(DVP_CFG_RGB_FORMAT);
+    dvp_set_image_size(CONFIG_CAMERA_RESOLUTION_WIDTH, CONFIG_CAMERA_RESOLUTION_HEIGHT);
     #if CONFIG_KD233
         cambus_init(8, 2, 10, 9, 0, 0); //DVP SCL(10) SDA(9) pin ->software i2c
     #endif
@@ -155,6 +156,7 @@ void camera_init()
 
     gc0328_reset();
     gc0328_init();
+    gc0328_set_framesize(FRAMESIZE_QVGA);
 #else
     LOGE(TAG,"not support camera type");
 #endif
