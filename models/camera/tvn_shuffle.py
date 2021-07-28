@@ -7,15 +7,19 @@ from keras.activations import *
 from keras.utils.vis_utils import plot_model
 
 
-batch_size = 32
+# batch_size = 32
 num_frames = 2
 
-block1_conv_filter = 32
-block2_conv_filter = 128
+block1_conv_filter = 16
+block2_conv_filter = 64
 
 SE_RATIO = 2
 BN_DECAY = 0.9
 BN_EPSILON = 1e-5
+
+
+def slice(x, h1, h2, w1, w2):
+    return x[:, h1:h2, w1:w2, :]
 
 
 def channel_split(x, name=''):
@@ -28,15 +32,15 @@ def channel_split(x, name=''):
 
 
 def bn_relu(inputs, relu="relu", init_zero=False):
-    initializer = tf.zeros_initializer() if init_zero else tf.ones_initializer()
+    # initializer = tf.zeros_initializer() if init_zero else tf.ones_initializer()
     x = BatchNormalization(
         axis=-1,
-        momentum=BN_DECAY,
-        epsilon=BN_EPSILON,
-        center=True,
-        scale=True,
-        fused=True,
-        gamma_initializer=initializer,
+        # momentum=BN_DECAY,
+        # epsilon=BN_EPSILON,
+        # center=True,
+        # scale=True,
+        # fused=True,
+        # gamma_initializer=initializer,
     )(inputs)
     if relu == "relu":
         x = ReLU()(x)
@@ -117,32 +121,35 @@ def block2(inputs):
 
 def GAP_classification(inputs, classes=100):
     feature_shape = inputs.shape.as_list()
-    num_frames = feature_shape[0] // batch_size
     inputs = tf.reshape(inputs, [
-        int(feature_shape[0] // num_frames),
-        num_frames * feature_shape[1], feature_shape[2], -1
+        feature_shape[0], feature_shape[1], feature_shape[2], -1
     ])
     x = tf.reduce_mean(inputs, axis=[1, 2])
     x = Dropout(0.5)(x)
+    x = Dense(64, activation="relu")(x)
     x = Dense(
         classes,
         activation="sigmoid",
-        kernel_initializer=tf.random_normal_initializer(stddev=.01),
+        # kernel_initializer=tf.random_normal_initializer(stddev=.01),
         name='out'
     )(x)
     return x
 
 
 def TVN(inputs, out_chanels, vstack=True):
-    repeat = 4
+    repeat = 2
     block1_repeat = repeat
     block2_repeat = repeat
 
-    bs, h, w, c = inputs.shape.as_list()
-    x = inputs
+    pre_frame = Lambda(slice, arguments={
+        'h1': 0, 'h2': 60, 'w1': 0, 'w2': 80})(inputs)
+    next_frame = Lambda(slice, arguments={
+        'h1': 60, 'h2': 120, 'w1': 0, 'w2': 80})(inputs)
 
-    if vstack:
-        x = tf.reshape(x, [bs*num_frames, h//num_frames, w, c])
+    x = Concatenate(axis=-1)([pre_frame, next_frame])
+
+    # if vstack:
+    #     x = tf.reshape(x, [bs*num_frames, h//num_frames, w, c])
 
     for i in range(block1_repeat):
         x = block1(x)
@@ -160,8 +167,8 @@ if __name__ == '__main__':
     batch_size = 32
     num_frames = 2
 
-    inputs = Input(shape=(num_frames*240, 320, 1), batch_size=batch_size)
-    model = TVN(inputs, 100)
+    inputs = Input(shape=(num_frames*60, 80, 1), batch_size=batch_size)
+    model = TVN(inputs, 1)
     model.summary()
     # plot_model(model, to_file='TVN_shuffle.png',
     #            show_layer_names=True, show_shapes=True)

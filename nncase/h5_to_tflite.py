@@ -7,7 +7,8 @@ def h5_to_tflite(saved_model_dir, tflite_path='model.tflite'):
     tflite_model = converter.convert()
     open(tflite_path, "wb").write(tflite_model)
 
+
 if __name__ == "__main__":
-    saved_model_dir = "checkpoint/fd_cam_shuffle_ep32_val_acc0.99_val_loss0.03.h5"
-    tflite_path = "save_model/tflite/fd_cam_shuffle_9911.tflite"
+    saved_model_dir = "checkpoint/fd_cam_ep08_val_acc0.9844_val_loss0.2329.h5"
+    tflite_path = "save_model/tflite/fd_cam_shuffle_9870.tflite"
     h5_to_tflite(saved_model_dir, tflite_path)

@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bsp.h"
 #include "global_config.h"
 #include "sleep.h"
 #include "sysctl.h"
-#include "unistd.h"
-#include "bsp.h"
 #include "timer.h"
+#include "unistd.h"
 
 #include "ai_engine.h"
 #include "camera.h"
@@ -21,7 +21,6 @@
 #include "rtc.h"
 #include "syslog.h"
 #include "w25qxx.h"
-#include "image_process.h"
 
 #if CONFIG_ENABLE_LCD
 #include "lcd.h"
@@ -88,14 +87,17 @@ static int timer_callback(void *ctx)
 {
     static int count = 0;
 
-    if(0 == timer_flag_send_status) {
+    if(0 == timer_flag_send_status)
+    {
         count++;
-        if(120 == count) {
+        if(120 == count)
+        {
             timer_flag_send_status = 1;
             count = 0;
         }
     }
-    if(0 == timer_flag_frame) {
+    if(0 == timer_flag_frame)
+    {
         timer_flag_frame = 1;
     }
 
@@ -134,7 +136,7 @@ void sensors_init()
 
     imgs_80x60x5.depth = 1;
     imgs_80x60x5.width = FRAME_WIDTH;
-    imgs_80x60x5.height = FRAME_HEIGHT*FRAMES_NUM;
+    imgs_80x60x5.height = FRAME_HEIGHT * FRAMES_NUM;
     image_init(&imgs_80x60x5);
 
     dvp_set_ai_addr((uint32_t)g_ai_buf.addr, (uint32_t)(g_ai_buf.addr + 320 * 240), (uint32_t)(g_ai_buf.addr + 320 * 240 * 2));
@@ -211,8 +213,10 @@ int fall_detect(kpu_model_context_t *task, image_t *image)
     return sigmoid(output_features);
 }
 
-int core1_tasks(void *ctx) {
-    while (1) {
+int core1_tasks(void *ctx)
+{
+    while(1)
+    {
         // Parameters:
         // g_ai_buf(320x240x3): the original frame
         // img_ai_buf(320x480x1): two frames only green channel, thus the height is 480
@@ -233,16 +237,18 @@ int core1_tasks(void *ctx) {
             ) via wifi every minute
         */
         /* send active status */
-        if(timer_flag_send_status) {
+        if(timer_flag_send_status)
+        {
             device_register(DEVICE_SN, "true", NULL);
             timer_flag_send_status = 0;
         }
         /* if some one falling down */
-        if(res_fall_down) {
+        if(res_fall_down)
+        {
             fall_event_register(DEVICE_SN, "true", imgs_80x60x5.addr, NULL);
         }
     }
-return 0;
+    return 0;
 }
 
 int main(void)
@@ -321,15 +327,18 @@ int main(void)
         dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
         while(g_dvp_finish_flag == 0)
             ;
-        if(0 == flag_image_pos) {
-            memcpy(img_ai_buf.addr, g_ai_buf.addr+320*240, 320*240);
+        if(flag_image_pos == 0)
+        {
+            memcpy(img_ai_buf.addr, g_ai_buf.addr + 320 * 240, 320 * 240);
             timer_flag_frame = 0;
             flag_image_pos = 1;
-        } else if(timer_flag_frame){
-            memcpy(img_ai_buf.addr + 320*240, g_ai_buf.addr+320*240, 320*240);
-            image_resize(g_ai_buf.addr+320*240, 320, 240, imgs_80x60x5.addr+80*60*send_fram_count, 80, 60);
+        } else if(timer_flag_frame)
+        {
+            memcpy(img_ai_buf.addr + 320 * 240, g_ai_buf.addr + 320 * 240, 320 * 240);
+            image_resize(g_ai_buf.addr + 320 * 240, 320, 240, imgs_80x60x5.addr + 80 * 60 * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
             send_fram_count++;
-            if(send_fram_count == 5) {
+            if(send_fram_count == 5)
+            {
                 send_fram_count = 0;
             }
         }

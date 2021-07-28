@@ -13,6 +13,8 @@
 #define WIFI_SSID                           "GUET-NB"
 #define WIFI_PASSWORD                       "15177564904"
 
+#define CAM_ORG_WIDTH                       320
+#define CAM_ORG_HEIGHT                      240
 #define FRAMES_NUM                          5
 #define FRAME_WIDTH                         80
 #define FRAME_HEIGHT                        60

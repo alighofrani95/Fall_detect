@@ -29,7 +29,7 @@ fix_gpu()
 ####################################################
 
 seed_n = 123
-batch_size = 32
+batch_size = 128
 epochs = 80
 
 img_width = 80
@@ -48,7 +48,6 @@ testset_size = len(glob("{}/*/*".format(test_path)))
 # testset_size = 800
 
 print(trainset_size, testset_size, trainset_size//batch_size, testset_size//batch_size)
-
 
 trainDataGen = ImageDataGenerator(
     rescale=1./255,
@@ -84,6 +83,7 @@ test_data = testDataGen.flow_from_directory(
 def build_model(num_frames=2, batch_size=64, outputs=10):
     inputs = Input(shape=(num_frames*img_height, img_width, 1), batch_size=batch_size)
     model = TVN(inputs, outputs)
+    # model = FDC(inputs, outputs)
     model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
     return model
 
@@ -97,7 +97,7 @@ def train(bs=64):
     # )
     callbacks = [
         ModelCheckpoint(
-            os.path.join(model_save_path, "fd_cam_shuffle_ep{epoch:02d}_val_acc{val_acc:.2f}_val_loss{val_loss:0.2f}.tflite"),
+            os.path.join(model_save_path, "fd_cam_ep{epoch:02d}_val_acc{val_acc:.4f}_val_loss{val_loss:0.4f}.h5"),
             monitor='val_loss',
             mode='auto',
             save_best_only=True,
@@ -111,6 +111,7 @@ def train(bs=64):
         validation_steps=testset_size//batch_size,
         shuffle=False,
         callbacks=callbacks,
+        workers=1,
     )
     return history
 
