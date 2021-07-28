@@ -7,7 +7,7 @@ from keras.activations import *
 from keras.utils.vis_utils import plot_model
 
 
-batch_size = 64
+batch_size = 32
 num_frames = 2
 
 block1_conv_filter = 32
@@ -18,11 +18,13 @@ BN_DECAY = 0.9
 BN_EPSILON = 1e-5
 
 
-def channel_split(x, num_splits=2):
-    if num_splits == 2:
-        return tf.split(x, axis=-1, num_or_size_splits=num_splits)
-    else:
-        raise ValueError('Error! num_splits should be 2')
+def channel_split(x, name=''):
+    # equipartition
+    in_channles = x.shape.as_list()[-1]
+    ip = in_channles // 2
+    c_hat = Lambda(lambda z: z[:, :, :, 0:ip])(x)
+    c = Lambda(lambda z: z[:, :, :, ip:])(x)
+    return c_hat, c
 
 
 def bn_relu(inputs, relu="relu", init_zero=False):

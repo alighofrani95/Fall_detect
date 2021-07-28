@@ -92,7 +92,7 @@ def gen_img_by_frame_num_list(video_path:str, frame_list:list):
 
 if __name__ == '__main__':
 
-    for i in glob("F:/fall_detect/fall_video/video/*.avi"):
+    for i in glob("C:/dataset/fall_video/*.avi"):
         # global video_count
         video_count += 1
         video_path = i
