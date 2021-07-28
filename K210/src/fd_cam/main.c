@@ -6,6 +6,7 @@
 #include "sysctl.h"
 #include "unistd.h"
 #include "bsp.h"
+#include "timer.h"
 
 #include "ai_engine.h"
 #include "camera.h"
@@ -20,6 +21,7 @@
 #include "rtc.h"
 #include "syslog.h"
 #include "w25qxx.h"
+#include "image_process.h"
 
 #if CONFIG_ENABLE_LCD
 #include "lcd.h"
@@ -30,10 +32,13 @@ static const char *TAG = "MAIN";
 
 static uint32_t *g_lcd_gram0;
 static uint32_t *g_lcd_gram1;
+static uint8_t send_fram_count = 0;
 volatile uint8_t g_dvp_finish_flag;
+volatile static uint8_t timer_flag_send_status = 0;
+volatile static uint8_t timer_flag_frame = 0;
 
 // added by noahzhy
-volatile uint8_t flag_image_pos; // a flag which image.addr is previous or next frame -> img_ai_buf
+volatile uint8_t flag_image_pos = 0; // a flag which image.addr is previous or next frame -> img_ai_buf
 static uint8_t *model_data;
 static image_t g_ai_buf, img_ai_buf;
 volatile int res_fall_down = 0;
@@ -79,6 +84,24 @@ static int on_irq_dvp(void *ctx)
     return 0;
 }
 
+static int timer_callback(void *ctx)
+{
+    static int count = 0;
+
+    if(0 == timer_flag_send_status) {
+        count++;
+        if(120 == count) {
+            timer_flag_send_status = 1;
+            count = 0;
+        }
+    }
+    if(0 == timer_flag_frame) {
+        timer_flag_frame = 1;
+    }
+
+    return 0;
+}
+
 void sensors_init()
 {
     /* DVP init */
@@ -97,8 +120,8 @@ void sensors_init()
 
     lcd_clear(BLACK);
 #endif
-    g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 2);
-    g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 2);
+    g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 3);
+    g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 3);
 
     g_ai_buf.depth = 3;
     g_ai_buf.width = 320;
@@ -127,14 +150,23 @@ void sensors_init()
     /* enable global interrupt */
     sysctl_enable_irq();
 
+    /* timer init */
+    timer_init(TIMER_DEVICE_0);
+    // Set timer interval to 5ms
+    timer_set_interval(TIMER_DEVICE_0, TIMER_CHANNEL_0, 500000000);
+    // Set timer callback function with single shot method
+    timer_irq_register(TIMER_DEVICE_0, TIMER_CHANNEL_0, 1, 1, timer_callback, NULL);
+    // Enable timer
+    timer_set_enable(TIMER_DEVICE_0, TIMER_CHANNEL_0, 1);
+
     /* ESP8266 init */
     LOGI(TAG, "ESP8266 init");
     int ret = 0;
-#ifdef CONFIG_KD233
+#if CONFIG_KD233
     ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 28, 27);
     msleep(100);
 #endif
-#ifdef CONFIG_MAIX_NANO
+#if CONFIG_MAIX_NANO
     ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 6, 7);
     msleep(100);
 #endif
@@ -154,7 +186,7 @@ void sensors_init()
 void init_model()
 {
     LOGI(TAG, "Load AI model");
-    model_data = (uint8_t *)malloc(KMODEL_SIZE + 255);
+    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE + 255);
     uint8_t *model_data_align = (uint8_t *)(((uintptr_t)model_data + 255) & (~255));
     w25qxx_read_data(KMODEL_ADDR, model_data_align, KMODEL_SIZE, W25QXX_QUAD_FAST);
 
@@ -200,6 +232,15 @@ int core1_tasks(void *ctx) {
             }
             ) via wifi every minute
         */
+        /* send active status */
+        if(timer_flag_send_status) {
+            device_register(DEVICE_SN, "true", NULL);
+            timer_flag_send_status = 0;
+        }
+        /* if some one falling down */
+        if(res_fall_down) {
+            fall_event_register(DEVICE_SN, "true", imgs_80x60x5.addr, NULL);
+        }
     }
 return 0;
 }
@@ -242,11 +283,11 @@ int main(void)
     {
         LOGE(TAG, "Login Error %d!", ret);
     }
-    ret = fall_event_register(DEVICE_SN, "true", img, NULL);
-    if(ret)
-    {
-        LOGE(TAG, "Upload Error %d!", ret);
-    }
+    // ret = fall_event_register(DEVICE_SN, "true", img, NULL);
+    // if(ret)
+    // {
+    //     LOGE(TAG, "Upload Error %d!", ret);
+    // }
     // ret = device_register(DEVICE_SN, "true", NULL);
     // if(ret) {
     //     LOGE(TAG, "device_register Error %d!", ret);
@@ -280,7 +321,18 @@ int main(void)
         dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
         while(g_dvp_finish_flag == 0)
             ;
-
+        if(0 == flag_image_pos) {
+            memcpy(img_ai_buf.addr, g_ai_buf.addr+320*240, 320*240);
+            timer_flag_frame = 0;
+            flag_image_pos = 1;
+        } else if(timer_flag_frame){
+            memcpy(img_ai_buf.addr + 320*240, g_ai_buf.addr+320*240, 320*240);
+            image_resize(g_ai_buf.addr+320*240, 320, 240, imgs_80x60x5.addr+80*60*send_fram_count, 80, 60);
+            send_fram_count++;
+            if(send_fram_count == 5) {
+                send_fram_count = 0;
+            }
+        }
 #if AI_TEST_MODE
         res_fall_down = fall_detect(&fall_detect_task, &img_ai_buf);
 #endif

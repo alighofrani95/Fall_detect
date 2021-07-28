@@ -33,7 +33,7 @@
 #define CONFIG_CAMERA_RESOLUTION_HEIGHT     240
 
 // LCD
-#define CONFIG_ENABLE_LCD                   0
+#define CONFIG_ENABLE_LCD                   1
 #define CONFIG_LCD_DCX_GPIONUM              2
 #define CONFIG_LCD_RST_GPIONUM              3
 #define CONFIG_LCD_SPI_CHANNEL              0

@@ -35,7 +35,7 @@ void display(struct QUEUE *q) {
         printf(" {}");
     } else {
         for (index = q->front, i = 1; i <= q->count; i++, index++) {
-            printf("%d ", q->array[index % (sizeof(q->array) / sizeof(image_t))]);
+            // printf("%d ", q->array[index % (sizeof(q->array) / sizeof(image_t))]);
         }
         printf("\n");
     }
