@@ -15,12 +15,12 @@
 #define WIFI_SSID                           "KT_GiGA_D88B"
 #define WIFI_PASSWORD                       "bgbb0eh979"
 
-#define CAM_WIDTH                           80
-#define CAM_HEIGHT                          60
+#define CAM_WIDTH                           160
+#define CAM_HEIGHT                          120
 #define FRAMES_NUM                          5
 #define FRAME_WIDTH                         80
 #define FRAME_HEIGHT                        60
-#define AI_TEST_MODE                        true
+#define AI_TEST_MODE                        1
 #define KMODEL_SIZE                         (461 * 1024)
 #define KMODEL_ADDR                         0xA00000
 
@@ -33,8 +33,8 @@
 #define CONFIG_CAMERA_GC0328                1
 #define CONFIG_CAMERA_OV5640                0
 #define CONFIG_CAMERA_OV2640                0
-#define CONFIG_CAMERA_RESOLUTION_WIDTH      320
-#define CONFIG_CAMERA_RESOLUTION_HEIGHT     240
+#define CONFIG_CAMERA_RESOLUTION_WIDTH      160
+#define CONFIG_CAMERA_RESOLUTION_HEIGHT     120
 
 // LCD
 #define CONFIG_ENABLE_LCD                   1
@@ -42,7 +42,7 @@
 #define CONFIG_LCD_RST_GPIONUM              3
 #define CONFIG_LCD_SPI_CHANNEL              0
 #define CONFIG_LCD_SPI_SLAVE_SELECT         3
-#define CONFIG_LCD_WIDTH                    320
-#define CONFIG_LCD_HEIGHT                   240
+#define CONFIG_LCD_WIDTH                    160
+#define CONFIG_LCD_HEIGHT                   120
 
 #endif // !_GLOBAL_CONFIG_H_

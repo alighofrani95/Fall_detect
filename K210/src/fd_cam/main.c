@@ -160,7 +160,7 @@ void sensors_init()
     // Set timer interval to 5ms
     timer_set_interval(TIMER_DEVICE_0, TIMER_CHANNEL_0, 500000000);
     // Set timer callback function with single shot method
-    timer_irq_register(TIMER_DEVICE_0, TIMER_CHANNEL_0, 1, 1, timer_callback, NULL);
+    timer_irq_register(TIMER_DEVICE_0, TIMER_CHANNEL_0, 0, 1, timer_callback, NULL);
     // Enable timer
     timer_set_enable(TIMER_DEVICE_0, TIMER_CHANNEL_0, 1);
 
@@ -212,6 +212,12 @@ int fall_detect(kpu_model_context_t *task, image_t *image)
 {
     float *output_features;
     size_t output_size;
+
+    for(int i=0; i<80; i++) {
+        for(int j=0; j<120; j++) {
+            printf(" %d", image->addr[i*80+j]);
+        }
+    }
 
     ai_infer(task, image->addr, &output_features, &output_size);
     printf("[INFO] fall detect result: %f, pixel: %d\n", output_features[0], image->addr[1200]);
@@ -327,19 +333,21 @@ int main(void)
             ;
         if(flag_image_pos == 0)
         {
-            memcpy(img_ai_buf.addr, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            // memcpy(img_ai_buf.addr, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH, CAM_HEIGHT, img_ai_buf.addr, FRAME_WIDTH, FRAME_HEIGHT);
             timer_flag_frame = 0;
             flag_image_pos = 1;
         } else if(timer_flag_frame)
         {
-            memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            // memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH, CAM_HEIGHT, img_ai_buf.addr + FRAME_WIDTH * FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT);
             flag_image_pos = 0;
             if(res_fall_down) {
                 send_fram_count = 0;
             }
             if(send_fram_count < 5) {
-                memcpy(imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, FRAME_WIDTH * FRAME_HEIGHT);
-                // image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT, imgs_80x60x5.addr + CAM_WIDTH * CAM_HEIGHT * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
+                // memcpy(imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, FRAME_WIDTH * FRAME_HEIGHT);
+                image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH, CAM_HEIGHT, imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
                 send_fram_count++;
             }
         }
@@ -360,7 +368,7 @@ int main(void)
         /* display pic*/
         g_ram_mux ^= 0x01;
 
-        lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
+        lcd_draw_picture(0, 0, CAM_WIDTH, CAM_HEIGHT, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
         /* up load img test */
         // ret++;
         // if(ret == 300) {

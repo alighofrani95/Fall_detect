@@ -158,7 +158,7 @@ void camera_init()
 
     gc0328_reset();
     gc0328_init();
-    gc0328_set_framesize(FRAMESIZE_QQQVGA);
+    gc0328_set_framesize(FRAMESIZE_QQVGA);
 #else
     LOGE(TAG,"not support camera type");
 #endif
