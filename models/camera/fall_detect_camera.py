@@ -17,6 +17,7 @@ from keras.utils.vis_utils import plot_model
 BATCH_NORM_DECAY = 0.9
 BATCH_NORM_EPSILON = 1e-5
 
+
 def slice(x, h1, h2, w1, w2):
     return x[:, h1:h2, w1:w2, :]
 
@@ -31,122 +32,89 @@ def hard_swish(x):
     return x
 
 
-def SE_Block(inputs, ratio=16):
-    channels = int_shape(inputs)[-1]
-    se_shape = (1, 1, channels)
-    x = GlobalAveragePooling2D()(inputs)
-    x = Reshape(se_shape)(x)
-    x = Dense(
-        channels // ratio,
-        activation='relu',
-        kernel_initializer='he_normal',
-        use_bias=False
-    )(x)
-    x = Dense(
-        channels,
-        activation='sigmoid',
-        kernel_initializer='he_normal',
-        use_bias=False
-    )(x)
-    x = Multiply()([inputs, x])
+def bn_relu(inputs, relu="relu", init_zero=False):
+    x = BatchNormalization()(inputs)
+    if relu == "relu":
+        x = ReLU()(x)
+    elif relu == "relu6":
+        x = Relu6(x)
     return x
 
 
-def SEBasicBlock(inputs, out_channel):
-    x = Conv2D(out_channel, 3, padding="same")(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = Conv2D(out_channel, 3, padding="same")(x)
-    x = BatchNormalization()(x)
-    x = SE_Block(x)
-
-    x = ReLU()(x)
+def Conv_DWConv_Conv(inputs, out_channels, stride=1):
+    x = Conv2D(out_channels, kernel_size=1, padding="same")(inputs)
+    x = bn_relu(x, relu="relu")
+    x = DepthwiseConv2D(kernel_size=3, strides=stride, padding="same")(x)
+    x = bn_relu(x, relu=None)
+    x = Conv2D(out_channels, kernel_size=1, padding="same")(x)
+    x = bn_relu(x, relu="relu")
     return x
 
 
-def SEBottleneck(inputs, out_channel):
-    x = Conv2D(out_channel, 1, padding="same")(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
+def channel_split(x):
+    in_channles = x.shape.as_list()[-1]
+    ip = in_channles // 2
+    c_hat = Lambda(lambda z: z[:, :, :, 0:ip])(x)
+    c = Lambda(lambda z: z[:, :, :, ip:])(x)
+    return c_hat, c
 
-    x = Conv2D(out_channel, 1, padding="same")(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
 
-    x = Conv2D(out_channel, 1, padding="same")(x)
-    x = BatchNormalization()(x)
-    x = SE_Block(x)
+def channel_shuffle(x, groups=2):
+    n, h, w, c = x.get_shape().as_list()
+    x = tf.reshape(x, [-1, h, w, groups, c // groups])
+    x = tf.transpose(x, [0, 1, 2, 4, 3])
+    x = tf.reshape(x, [-1, h, w, c])
+    return x
 
-    x = ReLU()(x)
+
+def shuffle_block(inputs, out_channels):
+    residual, x = channel_split(inputs)
+    x = Conv_DWConv_Conv(x, out_channels, stride=1)
+    x = Concatenate()([residual, x])
+    x = channel_shuffle(x)
+    return x
+
+
+def bottleneck(inputs, out_channels):
+    x = Conv_DWConv_Conv(inputs, out_channels)
     return x
 
 
 def Block1(inputs, out_channel):
-    x = Conv2D(
-        32,
-        kernel_size=3,
-        strides=1,
-        padding="same",
-        data_format="channels_last",
-    )(inputs)
-    x = Conv1D(
-        32,
-        kernel_size=3,
-        strides=1,
-        padding="same",
-        data_format="channels_last",
-    )(x)
-    x = SEBasicBlock(x, out_channel)
+    x = Conv2D(out_channel, kernel_size=3, strides=2, padding="same")(inputs)
+    x = Conv2D(out_channel, kernel_size=3, strides=1, padding="same")(x)
+    x = shuffle_block(x, out_channel)
     return x
 
 
 def Block2(inputs, out_channel):
-    x = Conv2D(
-        32,
-        kernel_size=3,
-        strides=1,
-        padding="same",
-        data_format="channels_last",
-    )(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = Conv2D(16, 1, padding="same")(x)
-    x = BatchNormalization()(x)
-    x = ReLU6(x)
-
-    x = DepthwiseConv2D(3, 1, padding="same")(x)
-    x = BatchNormalization()(x)
-    x = ReLU6(x)
-
-    # x = MaxPooling2D()(x)
-    x = SEBottleneck(x, out_channel)
+    x = Conv2D(out_channel, kernel_size=3, strides=1, padding="same")(inputs)
+    x = bn_relu(x)
+    x = bottleneck(x, out_channel)
+    x = MaxPooling2D()(x)
+    x = bottleneck(x, out_channel)
     return x
 
 
 def GlobalPool_Classifier(inputs, class_num):
     x = GlobalAveragePooling2D()(inputs)
     x = Dropout(0.5)(x)
-    x = Dense(32)(x)
-    x = LeakyReLU()(x)
+    x = Dense(128)(x)
+    x = ReLU6(x)
     out = Dense(class_num, activation="sigmoid")(x)
     return out
 
 
-def FDC(inputs, out_channels):
+def FDC(out_channels):
     repeat = 2
     block1_out_channels = 32
     block2_out_channels = 128
 
-    # inputs = Input(shape=(120, 80, 1))
+    inputs = Input(shape=(120, 80, 1))
     t0 = slice(inputs, 0, 60, 0, 80)
     t1 = slice(inputs, 60, 120, 0, 80)
-    # # t0 = Lambda(slice, arguments={'h1': 0, 'h2': 60, 'w1': 0, 'w2': 80})(inputs)
-    # # t1 = Lambda(slice, arguments={'h1': 60, 'h2': 120, 'w1': 0, 'w2': 80})(inputs)
 
-    # x = stack(, axis=1)
-    x = concatenate((t0, t1))
+    x = Concatenate()([t0, t1])
 
     for i in range(repeat):
         x = Block1(x, block1_out_channels)
@@ -160,7 +128,7 @@ def FDC(inputs, out_channels):
 
 if __name__ == '__main__':
     inputs = Input(shape=(120, 80, 1), batch_size=64)
-    model = FDC(inputs, out_channels=1)
+    model = FDC(out_channels=1)
     model.summary()
-    plot_model(model, to_file='FDC.png',
-               show_layer_names=True, show_shapes=True)
+    # plot_model(model, to_file='FDC.png',
+    #            show_layer_names=True, show_shapes=True)

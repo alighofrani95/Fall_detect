@@ -23,7 +23,6 @@ def slice(x, h1, h2, w1, w2):
 
 
 def channel_split(x, name=''):
-    # equipartition
     in_channles = x.shape.as_list()[-1]
     ip = in_channles // 2
     c_hat = Lambda(lambda z: z[:, :, :, 0:ip])(x)
@@ -31,7 +30,15 @@ def channel_split(x, name=''):
     return c_hat, c
 
 
-def bn_relu(inputs, relu="relu", init_zero=False):
+def channel_shuffle(x, groups=2):
+    n, h, w, c = x.get_shape().as_list()
+    x = tf.reshape(x, [-1, h, w, groups, c // groups])
+    x = tf.transpose(x, [0, 1, 2, 4, 3])
+    x = tf.reshape(x, [-1, h, w, c])
+    return x
+
+
+def bn_relu(inputs, relu="relu6", init_zero=False):
     # initializer = tf.zeros_initializer() if init_zero else tf.ones_initializer()
     x = BatchNormalization(
         axis=-1,
@@ -56,14 +63,6 @@ def Conv_DWConv_Conv(inputs, out_channels, stride=1):
     x = bn_relu(x, relu=None)
     x = Conv2D(out_channels, kernel_size=1, padding="same")(x)
     x = bn_relu(x, relu="relu")
-    return x
-
-
-def channel_shuffle(x, groups=2):
-    n, h, w, c = x.get_shape().as_list()
-    x = tf.reshape(x, [-1, h, w, groups, c // groups])
-    x = tf.transpose(x, [0, 1, 2, 4, 3])
-    x = tf.reshape(x, [-1, h, w, c])
     return x
 
 
@@ -103,7 +102,7 @@ def shuffle_block(inputs, out_channels):
 def block1(inputs):
     x = Conv2D(block1_conv_filter, kernel_size=3, strides=2, padding="same")(inputs)
     x = bn_relu(x, relu="relu")
-    x = Conv1D(block1_conv_filter, kernel_size=3, strides=1, padding="same")(x)
+    x = Conv2D(block1_conv_filter, kernel_size=3, strides=1, padding="same")(x)
     x = bn_relu(x, relu="relu")
     x = shuffle_block(x, block1_conv_filter)
     return x

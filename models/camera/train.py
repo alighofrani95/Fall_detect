@@ -11,8 +11,8 @@ from keras.layers import Input
 from glob import glob
 
 # from tvn import TVN
-from tvn_shuffle import TVN
-# from fall_detect_camera import FDC
+# from tvn_shuffle import TVN
+from fall_detect_camera import FDC
 
 ####################################################
 from tensorflow.compat.v1 import ConfigProto
@@ -30,7 +30,7 @@ fix_gpu()
 
 seed_n = 123
 batch_size = 128
-epochs = 80
+epochs = 30
 
 img_width = 80
 img_height = 60
@@ -81,20 +81,15 @@ test_data = testDataGen.flow_from_directory(
 
 
 def build_model(num_frames=2, batch_size=64, outputs=10):
-    inputs = Input(shape=(num_frames*img_height, img_width, 1), batch_size=batch_size)
-    model = TVN(inputs, outputs)
-    # model = FDC(inputs, outputs)
+    # inputs = Input(shape=(num_frames*img_height, img_width, 1))
+    # model = TVN(inputs, outputs)
+    model = FDC(outputs)
     model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
     return model
 
 
 def train(bs=64):
     model = build_model(num_frames=2, batch_size=bs, outputs=1)
-    # model.summary()
-    # plot_model(
-    #     model, to_file='TVN_nf2_bs{}.png'.format(bs),
-    #     show_layer_names=True, show_shapes=True
-    # )
     callbacks = [
         ModelCheckpoint(
             os.path.join(model_save_path, "fd_cam_ep{epoch:02d}_val_acc{val_acc:.4f}_val_loss{val_loss:0.4f}.h5"),
@@ -109,7 +104,7 @@ def train(bs=64):
         epochs=epochs,
         validation_data=test_data,
         validation_steps=testset_size//batch_size,
-        shuffle=False,
+        shuffle=True,
         callbacks=callbacks,
         workers=1,
     )

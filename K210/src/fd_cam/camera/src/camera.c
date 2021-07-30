@@ -144,7 +144,9 @@ void camera_init()
     dvp_set_xclk_rate(24000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
+#if CONFIG_ENABLE_LCD
     dvp_set_output_enable(1, 1);
+#endif
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
     dvp_set_image_size(CONFIG_CAMERA_RESOLUTION_WIDTH, CONFIG_CAMERA_RESOLUTION_HEIGHT);
     #if CONFIG_KD233
@@ -156,7 +158,7 @@ void camera_init()
 
     gc0328_reset();
     gc0328_init();
-    gc0328_set_framesize(FRAMESIZE_QVGA);
+    gc0328_set_framesize(FRAMESIZE_QQQVGA);
 #else
     LOGE(TAG,"not support camera type");
 #endif

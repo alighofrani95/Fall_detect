@@ -16,6 +16,8 @@
         "stdio.h": "c",
         "image_process.h": "c",
         "unistd.h": "c",
-        "gc0328.h": "c"
+        "gc0328.h": "c",
+        "ai_engine.h": "c",
+        "bsp.h": "c"
     }
 }

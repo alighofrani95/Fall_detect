@@ -13,13 +13,13 @@
 #define WIFI_SSID                           "GUET-NB"
 #define WIFI_PASSWORD                       "15177564904"
 
-#define CAM_ORG_WIDTH                       320
-#define CAM_ORG_HEIGHT                      240
+#define CAM_WIDTH                           80
+#define CAM_HEIGHT                          60
 #define FRAMES_NUM                          5
 #define FRAME_WIDTH                         80
 #define FRAME_HEIGHT                        60
 #define AI_TEST_MODE                        false
-#define KMODEL_SIZE                         (380 * 1024)
+#define KMODEL_SIZE                         (461 * 1024)
 #define KMODEL_ADDR                         0xA00000
 
 // Board

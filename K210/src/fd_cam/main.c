@@ -7,7 +7,7 @@
 #include "sysctl.h"
 #include "timer.h"
 #include "unistd.h"
-
+#include "kpu.h"
 #include "ai_engine.h"
 #include "camera.h"
 #include "dvp.h"
@@ -41,7 +41,7 @@ volatile uint8_t flag_image_pos = 0; // a flag which image.addr is previous or n
 static uint8_t *model_data;
 static image_t g_ai_buf, img_ai_buf;
 volatile int res_fall_down = 0;
-kpu_model_context_t fall_detect_task;
+static kpu_model_context_t fall_detect_task;
 
 // a images array for storing 5 frames to send
 volatile image_t imgs_80x60x5;
@@ -115,32 +115,32 @@ void sensors_init()
     lcd_init();
 #if CONFIG_MAIX_DOCK
     lcd_set_direction(DIR_YX_RLDU);
-
 #else
     lcd_set_direction(DIR_YX_RLUD);
 #endif
 
     lcd_clear(BLACK);
-#endif
     g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 3);
     g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 3);
+#endif
 
     g_ai_buf.depth = 3;
-    g_ai_buf.width = 320;
-    g_ai_buf.height = 240;
+    g_ai_buf.width = CAM_WIDTH;
+    g_ai_buf.height = CAM_HEIGHT;
     image_init(&g_ai_buf);
     img_ai_buf.depth = 1;
-    img_ai_buf.width = 320;
-    img_ai_buf.height = 480;
-    image_init(&img_ai_buf);
-
+    img_ai_buf.width = CAM_WIDTH;
+    img_ai_buf.height = CAM_HEIGHT * 2;
+    image_init(&img_ai_buf); // 120x80x1
     imgs_80x60x5.depth = 1;
     imgs_80x60x5.width = FRAME_WIDTH;
     imgs_80x60x5.height = FRAME_HEIGHT * FRAMES_NUM;
-    image_init(&imgs_80x60x5);
+    image_init(&imgs_80x60x5); // 80x60x5
 
-    dvp_set_ai_addr((uint32_t)g_ai_buf.addr, (uint32_t)(g_ai_buf.addr + 320 * 240), (uint32_t)(g_ai_buf.addr + 320 * 240 * 2));
+    dvp_set_ai_addr((uint32_t)g_ai_buf.addr, (uint32_t)(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT), (uint32_t)(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT * 2));
+#if CONFIG_ENABLE_LCD
     dvp_set_display_addr((uint32_t)g_lcd_gram0);
+#endif
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
     dvp_disable_auto();
     /* DVP interrupt config */
@@ -272,10 +272,6 @@ int main(void)
     LOGI(TAG, "System start");
     g_ram_mux = 0;
 
-    // g_dvp_finish_flag = 0;
-    // dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
-    // dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
-
     // uint8_t *img = (uint8_t *)malloc(320*240);
     // for(int i = 0; i < 80*60; i++) {
     //     img[i] = i + 48;
@@ -310,15 +306,10 @@ int main(void)
     // if(ret) {
     //     LOGE(TAG, "fall_event_admin Error %d!", ret);
     // }
-
-    // dvp_set_ai_addr((uint32_t)g_ai_buf, (uint32_t)(g_ai_buf + 320 * 240), (uint32_t)(g_ai_buf + 320 * 240 * 2));
-    // dvp_set_display_addr((uint32_t)g_lcd_gram0);
-    // dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
-    // dvp_disable_auto();
-
     register_core1(core1_tasks, NULL);
     /* enable global interrupt */
     sysctl_enable_irq();
+
     while(1)
     {
         /* ai cal finish*/
@@ -329,13 +320,14 @@ int main(void)
             ;
         if(flag_image_pos == 0)
         {
-            memcpy(img_ai_buf.addr, g_ai_buf.addr + 320 * 240, 320 * 240);
+            memcpy(img_ai_buf.addr, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
             timer_flag_frame = 0;
             flag_image_pos = 1;
         } else if(timer_flag_frame)
         {
-            memcpy(img_ai_buf.addr + 320 * 240, g_ai_buf.addr + 320 * 240, 320 * 240);
-            image_resize(g_ai_buf.addr + 320 * 240, 320, 240, imgs_80x60x5.addr + 80 * 60 * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
+            memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            memcpy(imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, FRAME_WIDTH * FRAME_HEIGHT);
+            // image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT, imgs_80x60x5.addr + CAM_WIDTH * CAM_HEIGHT * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
             send_fram_count++;
             if(send_fram_count == 5)
             {
@@ -382,9 +374,10 @@ int main(void)
         // msleep(1);
 #endif
     }
+#if CONFIG_ENABLE_LCD
     iomem_free(g_lcd_gram0);
     iomem_free(g_lcd_gram1);
-
+#endif
     image_deinit(&g_ai_buf);
     image_deinit(&img_ai_buf);
     return 0;
