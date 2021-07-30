@@ -47,6 +47,7 @@ static kpu_model_context_t fall_detect_task;
 volatile image_t imgs_80x60x5;
 
 volatile uint8_t g_ram_mux;
+
 #if CONFIG_ENABLE_LCD
 
 void rgb888_to_lcd(uint8_t *src, uint16_t *dest, size_t width, size_t height)
@@ -70,7 +71,9 @@ static int on_irq_dvp(void *ctx)
     if(dvp_get_interrupt(DVP_STS_FRAME_FINISH))
     {
         /* switch gram */
+#if CONFIG_ENABLE_LCD
         dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0 : (uint32_t)g_lcd_gram1);
+#endif
         dvp_clear_interrupt(DVP_STS_FRAME_FINISH);
         g_dvp_finish_flag = 1;
     } else
@@ -209,7 +212,7 @@ int fall_detect(kpu_model_context_t *task, image_t *image)
     size_t output_size;
 
     ai_infer(task, image->addr, &output_features, &output_size);
-    // printf("[INFO] fall detect result: %f\n", output_features[0]);
+    printf("[INFO] fall detect result: %f\n", output_features[0]);
     return sigmoid(output_features);
 }
 

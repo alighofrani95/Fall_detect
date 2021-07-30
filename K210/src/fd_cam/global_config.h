@@ -18,7 +18,7 @@
 #define FRAMES_NUM                          5
 #define FRAME_WIDTH                         80
 #define FRAME_HEIGHT                        60
-#define AI_TEST_MODE                        false
+#define AI_TEST_MODE                        true
 #define KMODEL_SIZE                         (461 * 1024)
 #define KMODEL_ADDR                         0xA00000
 
