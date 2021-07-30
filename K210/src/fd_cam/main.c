@@ -246,9 +246,10 @@ int core1_tasks(void *ctx)
             timer_flag_send_status = 0;
         }
         /* if some one falling down */
-        if(res_fall_down)
+        if(5 == send_fram_count)
         {
             fall_event_register(DEVICE_SN, "true", imgs_80x60x5.addr, NULL);
+            send_fram_count = 6;
         }
     }
     return 0;
@@ -329,12 +330,13 @@ int main(void)
         } else if(timer_flag_frame)
         {
             memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
-            memcpy(imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, FRAME_WIDTH * FRAME_HEIGHT);
-            // image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT, imgs_80x60x5.addr + CAM_WIDTH * CAM_HEIGHT * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
-            send_fram_count++;
-            if(send_fram_count == 5)
-            {
+            if(res_fall_down) {
                 send_fram_count = 0;
+            }
+            if(send_fram_count < 5) {
+                memcpy(imgs_80x60x5.addr + FRAME_WIDTH * FRAME_HEIGHT * send_fram_count, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, FRAME_WIDTH * FRAME_HEIGHT);
+                // image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT, imgs_80x60x5.addr + CAM_WIDTH * CAM_HEIGHT * send_fram_count, FRAME_WIDTH, FRAME_HEIGHT);
+                send_fram_count++;
             }
         }
 #if AI_TEST_MODE
