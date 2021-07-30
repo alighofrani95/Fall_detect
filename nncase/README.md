@@ -13,11 +13,11 @@ python nncase/h5_to_tflite.py
 ### compile
 
 ```shell
-nncase/ncc.exe compile  'save_model/tflite/fd_cam_shuffle.tflite'  'save_model/kmodel/fd_cam_shuffle.kmodel' -i tflite -o kmodel -t k210 --dataset 'C:\Projects\Fall_detect\data\train' --inference-type uint8
+nncase/ncc.exe compile  'save_model/tflite/fd_cam_shuffle.tflite'  'save_model/kmodel/fd_cam_shuffle.kmodel' -i tflite -o kmodel -t k210 --dataset 'data/train' --inference-type uint8
 ```
 
 ### infer
 
 ```shell
-./ncc.exe infer 'models/mask_detect.kmodel' 'mask_alive_e.bin' --dataset 'datasets/mask/test'
+./ncc.exe infer 'models/kmodel/fd_cam_shuffle.kmodel' 'fd_cam_shuffle.bin' --dataset 'data/test'
 ```

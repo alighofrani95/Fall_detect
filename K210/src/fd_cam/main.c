@@ -71,6 +71,7 @@ static int on_irq_dvp(void *ctx)
     if(dvp_get_interrupt(DVP_STS_FRAME_FINISH))
     {
         /* switch gram */
+        dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
 #if CONFIG_ENABLE_LCD
         dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0 : (uint32_t)g_lcd_gram1);
 #endif
@@ -78,8 +79,7 @@ static int on_irq_dvp(void *ctx)
         g_dvp_finish_flag = 1;
     } else
     {
-        if(g_dvp_finish_flag == 0)
-            dvp_start_convert();
+        dvp_start_convert();
         dvp_clear_interrupt(DVP_STS_FRAME_START);
     }
 
@@ -123,8 +123,8 @@ void sensors_init()
 #endif
 
     lcd_clear(BLACK);
-    g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 3);
-    g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 3);
+    g_lcd_gram0 = (uint32_t *)iomem_malloc(FRAME_WIDTH * FRAME_HEIGHT * 3);
+    g_lcd_gram1 = (uint32_t *)iomem_malloc(FRAME_WIDTH * FRAME_HEIGHT * 3);
 #endif
 
     g_ai_buf.depth = 3;
@@ -148,7 +148,7 @@ void sensors_init()
     dvp_disable_auto();
     /* DVP interrupt config */
     LOGD(TAG, "DVP interrupt config");
-    plic_set_priority(IRQN_DVP_INTERRUPT, 2);
+    plic_set_priority(IRQN_DVP_INTERRUPT, 1);
     plic_irq_register(IRQN_DVP_INTERRUPT, on_irq_dvp, NULL);
     plic_irq_enable(IRQN_DVP_INTERRUPT);
 
@@ -191,9 +191,11 @@ void sensors_init()
 void init_model()
 {
     LOGI(TAG, "Load AI model");
-    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE + 255);
+    w25qxx_init(3, 0);
+    w25qxx_enable_quad_mode();
+    model_data = (uint8_t *)malloc(KMODEL_SIZE + 255);
     uint8_t *model_data_align = (uint8_t *)(((uintptr_t)model_data + 255) & (~255));
-    w25qxx_read_data(KMODEL_ADDR, model_data_align, KMODEL_SIZE, W25QXX_QUAD_FAST);
+    w25qxx_read_data(0xA00000, model_data_align, KMODEL_SIZE, W25QXX_QUAD_FAST);
 
     if((kpu_load_kmodel(&fall_detect_task, model_data_align) != 0))
     {
@@ -212,7 +214,7 @@ int fall_detect(kpu_model_context_t *task, image_t *image)
     size_t output_size;
 
     ai_infer(task, image->addr, &output_features, &output_size);
-    printf("[INFO] fall detect result: %f\n", output_features[0]);
+    printf("[INFO] fall detect result: %f, pixel: %d\n", output_features[0], image->addr[1200]);
     return sigmoid(output_features);
 }
 
@@ -261,17 +263,18 @@ int main(void)
     sysctl_pll_set_freq(SYSCTL_PLL0, 800000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL1, 400000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
+    sysctl_clock_enable(SYSCTL_CLOCK_AI);
 
     plic_init();
     rtc_init();
-
-    /* sensor init */
-    sensors_init();
 
 #if AI_TEST_MODE
     // load AI model from flash
     init_model();
 #endif
+    /* sensor init */
+    sensors_init();
+
     /* system start */
     LOGI(TAG, "System start");
     g_ram_mux = 0;
@@ -330,6 +333,7 @@ int main(void)
         } else if(timer_flag_frame)
         {
             memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
+            flag_image_pos = 0;
             if(res_fall_down) {
                 send_fram_count = 0;
             }
