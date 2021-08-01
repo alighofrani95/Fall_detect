@@ -2,7 +2,7 @@
 
 volatile int ai_status;
 
-int sigmoid(const float *src) { return (src[0] < 0.5f ? 0 : 1); }
+int sigmoid(const float *src) { return (src[0] < 0.1f ? 0 : 1); }
 
 void ai_done(void *ctx) { ai_status = AI_DONE; }
 

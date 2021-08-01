@@ -31,7 +31,7 @@ static const char *TAG = "MAIN";
 
 static uint32_t *g_lcd_gram0;
 static uint32_t *g_lcd_gram1;
-static uint8_t send_fram_count = 0;
+static uint8_t send_fram_count = 6;
 volatile uint8_t g_dvp_finish_flag;
 volatile static uint8_t timer_flag_send_status = 0;
 volatile static uint8_t timer_flag_frame = 0;
@@ -172,7 +172,7 @@ void sensors_init()
     msleep(100);
 #endif
 #if CONFIG_MAIX_NANO
-    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 6, 7);
+    ret += esp_init(ESP_MODE_STATION, UART_DEVICE_1, 7, 6);
     msleep(100);
 #endif
     ret += esp_connect_wifi(WIFI_SSID, WIFI_PASSWORD);

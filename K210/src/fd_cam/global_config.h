@@ -12,8 +12,8 @@
 #define HOST_VIDEO_PORT                     "80"
 // #define WIFI_SSID                           "GUET-NB"
 // #define WIFI_PASSWORD                       "15177564904"
-#define WIFI_SSID                           "KT_GiGA_D88B"
-#define WIFI_PASSWORD                       "bgbb0eh979"
+#define WIFI_SSID                           "roha-ap"
+#define WIFI_PASSWORD                       "ARSaKThne1"
 
 #define CAM_WIDTH                           160
 #define CAM_HEIGHT                          120
@@ -26,8 +26,8 @@
 
 // Board
 #define CONFIG_MAIX_DOCK                    0
-#define CONFIG_MAIX_NANO                    0
-#define CONFIG_KD233                        1
+#define CONFIG_MAIX_NANO                    1
+#define CONFIG_KD233                        0
 
 // Camera
 #define CONFIG_CAMERA_GC0328                1
@@ -37,7 +37,7 @@
 #define CONFIG_CAMERA_RESOLUTION_HEIGHT     120
 
 // LCD
-#define CONFIG_ENABLE_LCD                   1
+#define CONFIG_ENABLE_LCD                   0
 #define CONFIG_LCD_DCX_GPIONUM              2
 #define CONFIG_LCD_RST_GPIONUM              3
 #define CONFIG_LCD_SPI_CHANNEL              0
