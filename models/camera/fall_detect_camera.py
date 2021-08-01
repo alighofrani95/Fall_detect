@@ -83,6 +83,7 @@ def bottleneck(inputs, out_channels):
 def Block1(inputs, out_channel):
     x = Conv2D(out_channel, kernel_size=3, strides=2, padding="same")(inputs)
     x = Conv2D(out_channel, kernel_size=3, strides=1, padding="same")(x)
+    # x = spatial_attention(x)
     x = shuffle_block(x, out_channel)
     return x
 
@@ -93,14 +94,14 @@ def Block2(inputs, out_channel):
     x = bottleneck(x, out_channel)
     x = MaxPooling2D()(x)
     x = bottleneck(x, out_channel)
+    x = shuffle_block(x, out_channel)
     return x
 
 
 def GlobalPool_Classifier(inputs, class_num):
     x = GlobalAveragePooling2D()(inputs)
     x = Dropout(0.5)(x)
-    x = Dense(128)(x)
-    x = ReLU6(x)
+    x = Dense(64, activation="relu")(x)
     out = Dense(class_num, activation="sigmoid")(x)
     return out
 

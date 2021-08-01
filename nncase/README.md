@@ -19,5 +19,5 @@ nncase/ncc.exe compile  'save_model/tflite/fd_cam_shuffle.tflite'  'save_model/k
 ### infer
 
 ```shell
-./ncc.exe infer 'models/kmodel/fd_cam_shuffle.kmodel' 'fd_cam_shuffle.bin' --dataset 'data/test'
+nncase/ncc.exe infer 'save_model/kmodel/fd_cam_shuffle.kmodel' 'nncase/out' --dataset 'nncase/val'
 ```

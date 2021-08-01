@@ -12,7 +12,8 @@ from glob import glob
 
 # from tvn import TVN
 # from tvn_shuffle import TVN
-from fall_detect_camera import FDC
+# from fall_detect_camera import FDC
+from fall_detect import FDC
 
 ####################################################
 from tensorflow.compat.v1 import ConfigProto
@@ -28,9 +29,9 @@ def fix_gpu():
 fix_gpu()
 ####################################################
 
-seed_n = 123
-batch_size = 128
-epochs = 30
+seed_n = 7
+batch_size = 32
+epochs = 50
 
 img_width = 80
 img_height = 60
@@ -44,8 +45,8 @@ test_path = os.path.join(data_root, "test")
 trainset_size = len(glob("{}/*/*".format(train_path)))
 testset_size = len(glob("{}/*/*".format(test_path)))
 
-# trainset_size = 3600
-# testset_size = 800
+trainset_size = 4800
+testset_size = 1200
 
 print(trainset_size, testset_size, trainset_size//batch_size, testset_size//batch_size)
 
@@ -54,7 +55,9 @@ trainDataGen = ImageDataGenerator(
     # featurewise_center=True,
     # featurewise_std_normalization=True,
     horizontal_flip=True,
-    brightness_range=[0.2,1.0],
+    channel_shift_range=10,
+    width_shift_range=[0, 0.5],
+    brightness_range=[0.3,1.0],
 )
 
 testDataGen = ImageDataGenerator(rescale=1./255)
@@ -62,7 +65,7 @@ testDataGen = ImageDataGenerator(rescale=1./255)
 train_data = trainDataGen.flow_from_directory(
     train_path,
     target_size=(img_height*2, img_width),
-    class_mode='binary',
+    class_mode='categorical',
     batch_size=batch_size,
     color_mode='grayscale',
     shuffle=True,
@@ -72,7 +75,7 @@ train_data = trainDataGen.flow_from_directory(
 test_data = testDataGen.flow_from_directory(
     test_path,
     target_size=(img_height*2, img_width),
-    class_mode='binary',
+    class_mode='categorical',
     batch_size=batch_size,
     color_mode='grayscale',
     shuffle=True,
@@ -84,12 +87,12 @@ def build_model(num_frames=2, batch_size=64, outputs=10):
     # inputs = Input(shape=(num_frames*img_height, img_width, 1))
     # model = TVN(inputs, outputs)
     model = FDC(outputs)
-    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
+    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=['acc'])
     return model
 
 
 def train(bs=64):
-    model = build_model(num_frames=2, batch_size=bs, outputs=1)
+    model = build_model(num_frames=2, batch_size=bs, outputs=3)
     callbacks = [
         ModelCheckpoint(
             os.path.join(model_save_path, "fd_cam_ep{epoch:02d}_val_acc{val_acc:.4f}_val_loss{val_loss:0.4f}.h5"),
@@ -104,7 +107,7 @@ def train(bs=64):
         epochs=epochs,
         validation_data=test_data,
         validation_steps=testset_size//batch_size,
-        shuffle=True,
+        shuffle=False,
         callbacks=callbacks,
         workers=1,
     )

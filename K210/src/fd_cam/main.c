@@ -213,15 +213,15 @@ int fall_detect(kpu_model_context_t *task, image_t *image)
     float *output_features;
     size_t output_size;
 
-    for(int i=0; i<80; i++) {
-        for(int j=0; j<120; j++) {
-            printf(" %d", image->addr[i*80+j]);
-        }
-    }
+    // for(int i=0; i<80; i++) {
+    //     for(int j=0; j<120; j++) {
+    //         printf(" %d", image->addr[i*80+j]);
+    //     }
+    // }
 
     ai_infer(task, image->addr, &output_features, &output_size);
     printf("[INFO] fall detect result: %f, pixel: %d\n", output_features[0], image->addr[1200]);
-    return sigmoid(output_features);
+    return sigmoid(&output_features[0]);
 }
 
 int core1_tasks(void *ctx)
@@ -329,8 +329,10 @@ int main(void)
         g_dvp_finish_flag = 0;
         dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
         dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
+        // LOGI(TAG, "DVP start!");
         while(g_dvp_finish_flag == 0)
             ;
+        // LOGI(TAG, "DVP finish!");
         if(flag_image_pos == 0)
         {
             // memcpy(img_ai_buf.addr, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
@@ -342,6 +344,7 @@ int main(void)
             // memcpy(img_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH * CAM_HEIGHT);
             image_resize(g_ai_buf.addr + CAM_WIDTH * CAM_HEIGHT, CAM_WIDTH, CAM_HEIGHT, img_ai_buf.addr + FRAME_WIDTH * FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT);
             flag_image_pos = 0;
+            res_fall_down = fall_detect(&fall_detect_task, &img_ai_buf);
             if(res_fall_down) {
                 send_fram_count = 0;
             }
@@ -351,9 +354,11 @@ int main(void)
                 send_fram_count++;
             }
         }
-#if AI_TEST_MODE
-        res_fall_down = fall_detect(&fall_detect_task, &img_ai_buf);
-#endif
+// #if AI_TEST_MODE
+//         // LOGI(TAG, "AI start!");
+//         res_fall_down = fall_detect(&fall_detect_task, &img_ai_buf);
+//         // LOGI(TAG, "AI finish!");
+// #endif
         // uint16_t* d=g_ram_mux?(uint16_t*)g_lcd_gram0:(uint16_t*)g_lcd_gram1;
         // for(int i=0;i<240;i++)
         // {
