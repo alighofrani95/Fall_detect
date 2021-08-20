@@ -82,7 +82,7 @@ def bottleneck(inputs, out_channels):
 
 def Block1(inputs, out_channel):
     x = Conv2D(out_channel, kernel_size=3, strides=2, padding="same")(inputs)
-    x = Conv2D(out_channel, kernel_size=3, strides=1, padding="same")(x)
+    x = Conv1D(out_channel, kernel_size=3, strides=1, padding="same")(x)
     # x = spatial_attention(x)
     x = shuffle_block(x, out_channel)
     return x
@@ -131,5 +131,6 @@ if __name__ == '__main__':
     inputs = Input(shape=(120, 80, 1), batch_size=64)
     model = FDC(out_channels=1)
     model.summary()
+    model.save('test.h5')
     # plot_model(model, to_file='FDC.png',
     #            show_layer_names=True, show_shapes=True)
